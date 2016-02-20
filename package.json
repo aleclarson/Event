@@ -1,0 +1,10 @@
+{
+  "name": "event",
+  "version": "1.0.0",
+  "main": "./js/src/Event",
+  "dependencies": {
+    "factory": "aleclarson/factory#1.0.0",
+    "immutable": "^3.7.6",
+    "type-utils": "aleclarson/type-utils#1.0.0"
+  }
+}
