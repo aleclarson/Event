@@ -7,9 +7,37 @@ Factory = require "factory"
 module.exports = Factory "Event",
 
   initArguments: (options) ->
-    assertType options, [ Object, Function ]
-    options = { didSet: options } if isType options, Function
+
+    assertType options, [ Object, Function, Void ]
+
+    unless options?
+      options = {}
+
+    else if isType options, Function
+      options = { didSet: options }
+
     [ options ]
+
+  func: (listener) ->
+    assertType listener, Function
+    @_callCounts.push null
+    @listeners = @listeners.push listener
+    listener
+
+  initFrozenValues: ->
+
+    self = this
+
+    emit: (args...) ->
+      context = this
+      callCounts = self._callCounts
+      self.listeners = self.listeners.filter (listener, index) ->
+        listener.apply context, args
+        callCount = callCounts[index]
+        return yes if (callCount is null) or (callCount > 1)
+        callCounts[index] = callCount - 1
+        return no
+      return
 
   initValues: ->
     _callCounts: []
@@ -18,13 +46,9 @@ module.exports = Factory "Event",
     listeners: Immutable.List()
 
   init: (options) ->
-    @ options.didSet
 
-  func: (listener) ->
-    assertType listener, Function
-    @_callCounts.push null
-    @listeners = @listeners.push listener
-    listener
+    if options.didSet?
+      @ options.didSet
 
   once: (listener) ->
     assertType listener, Function
@@ -39,13 +63,3 @@ module.exports = Factory "Event",
     @_callCounts.splice index, 1
     @listeners = @listeners.splice index, 1
     return yes
-
-  emit: (args...) ->
-    callCounts = @_callCounts
-    @listeners = @listeners.filter (listener, index) ->
-      listener.apply null, args
-      callCount = callCounts[index]
-      return yes if (callCount is null) or (callCount > 1)
-      callCounts[index] = callCount - 1
-      return no
-    return

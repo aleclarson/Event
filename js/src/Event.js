@@ -9,13 +9,43 @@ Factory = require("factory");
 
 module.exports = Factory("Event", {
   initArguments: function(options) {
-    assertType(options, [Object, Function]);
-    if (isType(options, Function)) {
+    assertType(options, [Object, Function, Void]);
+    if (options == null) {
+      options = {};
+    } else if (isType(options, Function)) {
       options = {
         didSet: options
       };
     }
     return [options];
+  },
+  func: function(listener) {
+    assertType(listener, Function);
+    this._callCounts.push(null);
+    this.listeners = this.listeners.push(listener);
+    return listener;
+  },
+  initFrozenValues: function() {
+    var self;
+    self = this;
+    return {
+      emit: function() {
+        var args, callCounts, context;
+        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        context = this;
+        callCounts = self._callCounts;
+        self.listeners = self.listeners.filter(function(listener, index) {
+          var callCount;
+          listener.apply(context, args);
+          callCount = callCounts[index];
+          if ((callCount === null) || (callCount > 1)) {
+            return true;
+          }
+          callCounts[index] = callCount - 1;
+          return false;
+        });
+      }
+    };
   },
   initValues: function() {
     return {
@@ -28,13 +58,9 @@ module.exports = Factory("Event", {
     };
   },
   init: function(options) {
-    return this(options.didSet);
-  },
-  func: function(listener) {
-    assertType(listener, Function);
-    this._callCounts.push(null);
-    this.listeners = this.listeners.push(listener);
-    return listener;
+    if (options.didSet != null) {
+      return this(options.didSet);
+    }
   },
   once: function(listener) {
     assertType(listener, Function);
@@ -52,21 +78,6 @@ module.exports = Factory("Event", {
     this._callCounts.splice(index, 1);
     this.listeners = this.listeners.splice(index, 1);
     return true;
-  },
-  emit: function() {
-    var args, callCounts;
-    args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
-    callCounts = this._callCounts;
-    this.listeners = this.listeners.filter(function(listener, index) {
-      var callCount;
-      listener.apply(null, args);
-      callCount = callCounts[index];
-      if ((callCount === null) || (callCount > 1)) {
-        return true;
-      }
-      callCounts[index] = callCount - 1;
-      return false;
-    });
   }
 });
 
