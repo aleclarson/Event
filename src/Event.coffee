@@ -1,5 +1,8 @@
 
-{ isType, assertType } = require "type-utils"
+{ Void
+  isType
+  assert
+  assertType } = require "type-utils"
 
 Immutable = require "immutable"
 Factory = require "factory"
@@ -14,52 +17,68 @@ module.exports = Factory "Event",
       options = {}
 
     else if isType options, Function
-      options = { didSet: options }
+      options = { onEmit: options }
 
     [ options ]
 
-  func: (listener) ->
-    assertType listener, Function
-    @_callCounts.push null
-    @listeners = @listeners.push listener
-    listener
+  func: (listener, callCount) ->
+    @_addListener listener, callCount
 
-  initFrozenValues: ->
+  customValues:
 
-    self = this
+    emit: lazy: ->
+      self = this
+      return (args...) ->
+        context = this
+        callsRemaining = self._callsRemaining
+        indexesRemoved = 0
+        self.listeners = self.listeners.filter (listener, index) ->
+          listener.apply context, args
+          index -= indexesRemoved
+          calls = callsRemaining[index] - 1
+          if calls > 0
+            callsRemaining[index] = calls
+            return yes
+          callsRemaining.splice index, 1
+          indexesRemoved += 1
+          return no
+        self._indexesRemoved = indexesRemoved
+        return
 
-    emit: (args...) ->
-      context = this
-      callCounts = self._callCounts
-      self.listeners = self.listeners.filter (listener, index) ->
-        listener.apply context, args
-        callCount = callCounts[index]
-        return yes if (callCount is null) or (callCount > 1)
-        callCounts[index] = callCount - 1
-        return no
-      return
+    emitArgs: lazy: ->
+      { emit } = this
+      return (args) ->
+        emit.apply this, args
+
+    listenable: lazy: ->
+      self = @_addListener.bind this
+      self.once = @once.bind this
+      self
 
   initValues: ->
-    _callCounts: []
+    _callsRemaining: []
+    _indexesRemoved: 0
 
   initReactiveValues: ->
     listeners: Immutable.List()
 
   init: (options) ->
-
-    if options.didSet?
-      @ options.didSet
+    @_addListener options.onEmit if options.onEmit?
 
   once: (listener) ->
+    @_addListener listener, 1
+
+  _addListener: (listener, callCount = Infinity) ->
     assertType listener, Function
-    @_callCounts.push 1
+    assert not listener.stop, "Listener already active!"
+    listener.stop = @_removeListener.bind this, listener
     @listeners = @listeners.push listener
+    @_callsRemaining.push callCount
     listener
 
-  remove: (listener) ->
-    assertType listener, Function
+  _removeListener: (listener) ->
+    listener.stop = null
     index = @listeners.indexOf listener
-    return no if index < 0
-    @_callCounts.splice index, 1
     @listeners = @listeners.splice index, 1
-    return yes
+    @_callsRemaining.splice index, 1
+    return

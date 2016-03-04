@@ -1,7 +1,7 @@
-var Factory, Immutable, assertType, isType, ref,
+var Factory, Immutable, Void, assert, assertType, isType, ref,
   slice = [].slice;
 
-ref = require("type-utils"), isType = ref.isType, assertType = ref.assertType;
+ref = require("type-utils"), Void = ref.Void, isType = ref.isType, assert = ref.assert, assertType = ref.assertType;
 
 Immutable = require("immutable");
 
@@ -14,42 +14,64 @@ module.exports = Factory("Event", {
       options = {};
     } else if (isType(options, Function)) {
       options = {
-        didSet: options
+        onEmit: options
       };
     }
     return [options];
   },
-  func: function(listener) {
-    assertType(listener, Function);
-    this._callCounts.push(null);
-    this.listeners = this.listeners.push(listener);
-    return listener;
+  func: function(listener, callCount) {
+    return this._addListener(listener, callCount);
   },
-  initFrozenValues: function() {
-    var self;
-    self = this;
-    return {
-      emit: function() {
-        var args, callCounts, context;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
-        context = this;
-        callCounts = self._callCounts;
-        self.listeners = self.listeners.filter(function(listener, index) {
-          var callCount;
-          listener.apply(context, args);
-          callCount = callCounts[index];
-          if ((callCount === null) || (callCount > 1)) {
-            return true;
-          }
-          callCounts[index] = callCount - 1;
-          return false;
-        });
+  customValues: {
+    emit: {
+      lazy: function() {
+        var self;
+        self = this;
+        return function() {
+          var args, callsRemaining, context, indexesRemoved;
+          args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+          context = this;
+          callsRemaining = self._callsRemaining;
+          indexesRemoved = 0;
+          self.listeners = self.listeners.filter(function(listener, index) {
+            var calls;
+            listener.apply(context, args);
+            index -= indexesRemoved;
+            calls = callsRemaining[index] - 1;
+            if (calls > 0) {
+              callsRemaining[index] = calls;
+              return true;
+            }
+            callsRemaining.splice(index, 1);
+            indexesRemoved += 1;
+            return false;
+          });
+          self._indexesRemoved = indexesRemoved;
+        };
       }
-    };
+    },
+    emitArgs: {
+      lazy: function() {
+        var emit;
+        emit = this.emit;
+        return function(args) {
+          return emit.apply(this, args);
+        };
+      }
+    },
+    listenable: {
+      lazy: function() {
+        var self;
+        self = this._addListener.bind(this);
+        self.once = this.once.bind(this);
+        return self;
+      }
+    }
   },
   initValues: function() {
     return {
-      _callCounts: []
+      _callsRemaining: [],
+      _indexesRemoved: 0
     };
   },
   initReactiveValues: function() {
@@ -58,26 +80,30 @@ module.exports = Factory("Event", {
     };
   },
   init: function(options) {
-    if (options.didSet != null) {
-      return this(options.didSet);
+    if (options.onEmit != null) {
+      return this._addListener(options.onEmit);
     }
   },
   once: function(listener) {
+    return this._addListener(listener, 1);
+  },
+  _addListener: function(listener, callCount) {
+    if (callCount == null) {
+      callCount = Infinity;
+    }
     assertType(listener, Function);
-    this._callCounts.push(1);
+    assert(!listener.stop, "Listener already active!");
+    listener.stop = this._removeListener.bind(this, listener);
     this.listeners = this.listeners.push(listener);
+    this._callsRemaining.push(callCount);
     return listener;
   },
-  remove: function(listener) {
+  _removeListener: function(listener) {
     var index;
-    assertType(listener, Function);
+    listener.stop = null;
     index = this.listeners.indexOf(listener);
-    if (index < 0) {
-      return false;
-    }
-    this._callCounts.splice(index, 1);
     this.listeners = this.listeners.splice(index, 1);
-    return true;
+    this._callsRemaining.splice(index, 1);
   }
 });
 
