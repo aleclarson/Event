@@ -1,13 +1,29 @@
 
 { Void
   isType
-  assert
   assertType } = require "type-utils"
 
-Immutable = require "immutable"
+{ throwFailure } = require "failure"
+
+emptyFunction = require "emptyFunction"
+LazyVar = require "lazy-var"
 Factory = require "factory"
 
-module.exports = Factory "Event",
+Listener = require "./Listener"
+
+didListen = LazyVar ->
+  event = Event()
+  event._onListen = emptyFunction
+  event
+
+module.exports =
+Event = Factory "Event",
+
+  statics: {
+    Listener
+    didListen: get: ->
+      didListen.get().listenable
+  }
 
   initArguments: (options) ->
 
@@ -17,68 +33,115 @@ module.exports = Factory "Event",
       options = {}
 
     else if isType options, Function
-      options = { onEmit: options }
+      options = { onEvent: options }
 
     [ options ]
 
-  func: (listener, callCount) ->
-    @_addListener listener, callCount
+  optionTypes:
+    onEvent: [ Function, Void ]
 
   customValues:
 
     emit: lazy: ->
       self = this
-      return (args...) ->
-        context = this
-        callsRemaining = self._callsRemaining
-        indexesRemoved = 0
-        self.listeners = self.listeners.filter (listener, index) ->
-          listener.apply context, args
-          index -= indexesRemoved
-          calls = callsRemaining[index] - 1
-          if calls > 0
-            callsRemaining[index] = calls
-            return yes
-          callsRemaining.splice index, 1
-          indexesRemoved += 1
-          return no
-        self._indexesRemoved = indexesRemoved
-        return
+      return ->
+        self._notifyListeners this, arguments
 
     emitArgs: lazy: ->
-      { emit } = this
+      self = this
       return (args) ->
-        emit.apply this, args
+        self._notifyListeners this, args
 
     listenable: lazy: ->
-      self = @_addListener.bind this
-      self.once = @once.bind this
+      self = (options) => this options
+      self.once = (options) => @once options
       self
 
   initValues: ->
-    _callsRemaining: []
-    _indexesRemoved: 0
 
-  initReactiveValues: ->
-    listeners: Immutable.List()
+    _listeners: null
 
   init: (options) ->
-    @_addListener options.onEmit if options.onEmit?
 
-  once: (listener) ->
-    @_addListener listener, 1
+    if options.onEvent?
+      this options.onEvent
 
-  _addListener: (listener, callCount = Infinity) ->
-    assertType listener, Function
-    assert not listener.stop, "Listener already active!"
-    listener.stop = @_removeListener.bind this, listener
-    @listeners = @listeners.push listener
-    @_callsRemaining.push callCount
-    listener
+  boundMethods: [
+    "_detachListener"
+  ]
 
-  _removeListener: (listener) ->
-    listener.stop = null
-    index = @listeners.indexOf listener
-    @listeners = @listeners.splice index, 1
-    @_callsRemaining.splice index, 1
+  func: (onEvent) ->
+    @_attachListener Listener {
+      onEvent
+      onStop: @_detachListener
+    }
+
+  once: (onEvent) ->
+    @_attachListener Listener {
+      onEvent
+      maxCalls: 1
+      onStop: @_detachListener
+    }
+
+  many: (maxCalls, onEvent) ->
+    @_attachListener Listener {
+      onEvent
+      maxCalls
+      onStop: @_detachListener
+    }
+
+  reset: ->
+    listeners = @_listeners
+    return unless listeners
+    if isType listeners, Listener
+      listeners._defuse()
+    else
+      for listener in listeners
+        listener._defuse()
+    @_listeners = null
+    return
+
+  _attachListener: (listener) ->
+    assertType listener, Listener
+    @_listeners = @_retainListener listener, @_listeners
+    @_onListen listener
+    return listener
+
+  _retainListener: (listener, oldValue) ->
+    return listener unless oldValue
+    return [ oldValue, listener ] if isType oldValue, Listener
+    oldValue.push listener
+    oldValue
+
+  # This broadcasts that a Listener has been attached to an Event.
+  _onListen: (listener) -> didListen.get().emit this, listener
+
+  _notifyListeners: (scope, args) ->
+    listeners = @_listeners
+    return unless listeners
+    if isType listeners, Listener
+      return if listeners.notify scope, args
+      @_listeners = null
+    else
+      listeners = listeners.filter (listener) ->
+        listener.notify scope, args
+      if listeners.length is 0
+        @_listeners = null
+      else if listeners.length is 1
+        @_listeners = listeners[0]
+      else
+        @_listeners = listeners
+    return
+
+  _detachListener: (listener) ->
+    listeners = @_listeners
+    if isType listeners, Listener
+      return if listener isnt listeners
+      @_listeners = null
+    else
+      index = listeners.indexOf listener
+      return if index < 0
+      listeners.splice index, 1
+      return if listeners.length > 1
+      @_listeners = listeners[0]
     return
