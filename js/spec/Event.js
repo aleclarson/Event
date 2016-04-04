@@ -83,6 +83,58 @@ describe("Event", function() {
       emit();
       return expect(listener.calls).toBe(1);
     });
+    it("can stop a listener during an emit", function() {
+      var bar, event, foo, spy, zen;
+      spy = jasmine.createSpy();
+      event = Event();
+      foo = event(function() {
+        spy(0);
+        return bar.stop();
+      });
+      bar = event(function() {
+        return spy(1);
+      });
+      zen = event(function() {
+        return spy(2);
+      });
+      event.emit();
+      expect(spy.calls.count()).toBe(2);
+      expect(spy.calls.argsFor(0)).toContain(0);
+      return expect(spy.calls.argsFor(1)).toContain(2);
+    });
+    it("detaches a listener that stops itself", function() {
+      var event, foo;
+      event = Event();
+      foo = event(function() {
+        foo.stop();
+        return expect(event.listenerCount).toBe(1);
+      });
+      event.emit();
+      return expect(event.listenerCount).toBe(0);
+    });
+    it("detaches a listener that is stopped by an earlier listener", function() {
+      var bar, event, foo, spy;
+      event = Event();
+      foo = event(function() {
+        bar.stop();
+        return expect(event.listenerCount).toBe(2);
+      });
+      bar = event(spy = jasmine.createSpy());
+      event.emit();
+      expect(event.listenerCount).toBe(1);
+      return expect(spy.calls.count()).toBe(0);
+    });
+    it("detaches a listener that is stopped by a later listener", function() {
+      var bar, event, foo;
+      event = Event();
+      foo = event(emptyFunction);
+      bar = event(function() {
+        foo.stop();
+        return expect(event.listenerCount).toBe(2);
+      });
+      event.emit();
+      return expect(event.listenerCount).toBe(1);
+    });
     return bench(function() {
       var event, i, j;
       event = Event();

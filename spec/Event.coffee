@@ -74,6 +74,92 @@ describe "Event", ->
       emit()
       expect(listener.calls).toBe 1
 
+    it "can stop a listener during an emit", ->
+
+      spy = jasmine.createSpy()
+
+      event = Event()
+
+      foo = event ->
+        spy 0
+        bar.stop()
+
+      bar = event ->
+        spy 1
+
+      zen = event ->
+        spy 2
+
+      event.emit()
+
+      expect spy.calls.count()
+        .toBe 2
+
+      expect spy.calls.argsFor 0
+        .toContain 0
+
+      expect spy.calls.argsFor 1
+        .toContain 2
+
+    it "detaches a listener that stops itself", ->
+
+      event = Event()
+
+      foo = event ->
+
+        foo.stop()
+
+        # Wait until the emit finishes before detaching dead listeners.
+        expect event.listenerCount
+          .toBe 1
+
+      event.emit()
+
+      expect event.listenerCount
+        .toBe 0
+
+    it "detaches a listener that is stopped by an earlier listener", ->
+
+      event = Event()
+
+      foo = event ->
+
+        bar.stop()
+
+        # Wait until the emit finishes before detaching dead listeners.
+        expect event.listenerCount
+          .toBe 2
+
+      # This should never be called.
+      bar = event spy = jasmine.createSpy()
+
+      event.emit()
+
+      expect event.listenerCount
+        .toBe 1
+
+      expect spy.calls.count()
+        .toBe 0
+
+    it "detaches a listener that is stopped by a later listener", ->
+
+      event = Event()
+
+      foo = event emptyFunction
+
+      bar = event ->
+
+        foo.stop()
+
+        # Wait until the emit finishes before detaching dead listeners.
+        expect event.listenerCount
+          .toBe 2
+
+      event.emit()
+
+      expect event.listenerCount
+        .toBe 1
+
     bench ->
 
       event = Event()

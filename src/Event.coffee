@@ -1,6 +1,6 @@
 
 { Void
-  isType
+  assert
   assertType } = require "type-utils"
 
 { throwFailure } = require "failure"
@@ -32,15 +32,19 @@ Event = Factory "Event",
     unless options?
       options = {}
 
-    else if isType options, Function
+    else if options.constructor is Function
       options = { onEvent: options }
 
     [ options ]
 
   optionTypes:
-    onEvent: [ Function, Void ]
+    onEvent: Function.Maybe
+    onSetListeners: Function.Maybe
 
   customValues:
+
+    listenerCount: get: ->
+      @_listenerCount
 
     emit: lazy: ->
       self = this
@@ -57,13 +61,23 @@ Event = Factory "Event",
       self.once = (options) => @once options
       self
 
-  initValues: ->
+  initValues: (options) ->
+
+    _isNotifying: no
+
+    _detachQueue: []
 
     _listeners: null
 
+    _onSetListeners: options.onSetListeners
+
+  initReactiveValues: ->
+
+    _listenerCount: 0
+
   init: (options) ->
 
-    if options.onEvent?
+    if options.onEvent
       this options.onEvent
 
   boundMethods: [
@@ -91,57 +105,103 @@ Event = Factory "Event",
     }
 
   reset: ->
-    listeners = @_listeners
-    return unless listeners
-    if isType listeners, Listener
-      listeners._defuse()
+
+    oldValue = @_listeners
+
+    return unless oldValue
+
+    if oldValue.constructor is Listener
+      oldValue._defuse()
+
     else
-      for listener in listeners
+      for listener in oldValue
         listener._defuse()
-    @_listeners = null
+
+    @_setListeners null, 0
+
     return
 
   _attachListener: (listener) ->
+
     assertType listener, Listener
-    @_listeners = @_retainListener listener, @_listeners
+
+    oldValue = @_listeners
+
+    unless oldValue
+      @_setListeners listener, 1
+
+    else if oldValue.constructor is Listener
+      @_setListeners [ oldValue, listener ], 2
+
+    else
+      oldValue.push listener
+      @_setListeners oldValue, oldValue.length
+
     @_onListen listener
+
     return listener
 
-  _retainListener: (listener, oldValue) ->
-    return listener unless oldValue
-    return [ oldValue, listener ] if isType oldValue, Listener
-    oldValue.push listener
-    oldValue
-
   # This broadcasts that a Listener has been attached to an Event.
-  _onListen: (listener) -> didListen.get().emit this, listener
+  _onListen: (listener) ->
+    didListen.get().emit this, listener
 
   _notifyListeners: (scope, args) ->
-    listeners = @_listeners
-    return unless listeners
-    if isType listeners, Listener
-      return if listeners.notify scope, args
-      @_listeners = null
+
+    oldValue = @_listeners
+
+    return unless oldValue
+
+    @_isNotifying = yes
+
+    if oldValue.constructor is Listener
+      oldValue.notify scope, args
+
     else
-      listeners = listeners.filter (listener) ->
-        listener.notify scope, args
-      if listeners.length is 0
-        @_listeners = null
-      else if listeners.length is 1
-        @_listeners = listeners[0]
-      else
-        @_listeners = listeners
-    return
+      listener.notify scope, args for listener in oldValue
+
+    @_isNotifying = no
+
+    @_detachListeners @_detachQueue
 
   _detachListener: (listener) ->
-    listeners = @_listeners
-    if isType listeners, Listener
-      return if listener isnt listeners
-      @_listeners = null
+
+    if @_isNotifying
+      @_detachQueue.push listener
+      return
+
+    oldValue = @_listeners
+
+    if oldValue.constructor is Listener
+      assert listener is oldValue
+      @_setListeners null, 0
+
     else
-      index = listeners.indexOf listener
-      return if index < 0
-      listeners.splice index, 1
-      return if listeners.length > 1
-      @_listeners = listeners[0]
+      index = oldValue.indexOf listener
+      assert index >= 0
+
+      oldValue.splice index, 1
+      newCount = oldValue.length
+
+      if newCount is 1 then @_setListeners oldValue[0], 1
+      else @_setListeners oldValue, newCount
+
     return
+
+  _detachListeners: (listeners) ->
+    count = listeners.length
+    return if count is 0
+    if count is 1 then @_detachListener listeners[0]
+    else @_detachListener listener for listener in listeners
+    listeners.length = 0
+
+  _setListeners: (newValue, newCount) ->
+
+    assert newCount isnt @_listenerCount
+
+    @_listeners = newValue if newValue isnt @_listeners
+
+    @_listenerCount = newCount
+
+    return unless @_onSetListeners
+
+    @_onSetListeners newValue, newCount

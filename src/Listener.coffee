@@ -40,15 +40,15 @@ Listener = Factory "Listener",
   notify: (scope, args) ->
     @_calls += 1
     @_onEvent.apply scope, args
-    return yes if @_calls < @maxCalls
-    @_defuse()
-    return no
+    @stop() if @_calls is @maxCalls
+    return
 
   stop: ->
     @_defuse()
-    @_onStop()
+    @_onStop this
     return
 
   _defuse: ->
-    @_prevent = @notify = @stop = emptyFunction
+    @notify = emptyFunction.thatReturnsFalse
+    @_defuse = @stop = emptyFunction
     return

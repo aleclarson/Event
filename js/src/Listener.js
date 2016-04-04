@@ -46,18 +46,17 @@ module.exports = Listener = Factory("Listener", {
   notify: function(scope, args) {
     this._calls += 1;
     this._onEvent.apply(scope, args);
-    if (this._calls < this.maxCalls) {
-      return true;
+    if (this._calls === this.maxCalls) {
+      this.stop();
     }
-    this._defuse();
-    return false;
   },
   stop: function() {
     this._defuse();
-    this._onStop();
+    this._onStop(this);
   },
   _defuse: function() {
-    this._prevent = this.notify = this.stop = emptyFunction;
+    this.notify = emptyFunction.thatReturnsFalse;
+    this._defuse = this.stop = emptyFunction;
   }
 });
 

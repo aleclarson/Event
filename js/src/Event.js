@@ -1,6 +1,6 @@
-var Event, Factory, LazyVar, Listener, Void, assertType, didListen, emptyFunction, isType, ref, throwFailure;
+var Event, Factory, LazyVar, Listener, Void, assert, assertType, didListen, emptyFunction, ref, throwFailure;
 
-ref = require("type-utils"), Void = ref.Void, isType = ref.isType, assertType = ref.assertType;
+ref = require("type-utils"), Void = ref.Void, assert = ref.assert, assertType = ref.assertType;
 
 throwFailure = require("failure").throwFailure;
 
@@ -32,7 +32,7 @@ module.exports = Event = Factory("Event", {
     assertType(options, [Object, Function, Void]);
     if (options == null) {
       options = {};
-    } else if (isType(options, Function)) {
+    } else if (options.constructor === Function) {
       options = {
         onEvent: options
       };
@@ -40,9 +40,15 @@ module.exports = Event = Factory("Event", {
     return [options];
   },
   optionTypes: {
-    onEvent: [Function, Void]
+    onEvent: Function.Maybe,
+    onSetListeners: Function.Maybe
   },
   customValues: {
+    listenerCount: {
+      get: function() {
+        return this._listenerCount;
+      }
+    },
     emit: {
       lazy: function() {
         var self;
@@ -78,13 +84,21 @@ module.exports = Event = Factory("Event", {
       }
     }
   },
-  initValues: function() {
+  initValues: function(options) {
     return {
-      _listeners: null
+      _isNotifying: false,
+      _detachQueue: [],
+      _listeners: null,
+      _onSetListeners: options.onSetListeners
+    };
+  },
+  initReactiveValues: function() {
+    return {
+      _listenerCount: 0
     };
   },
   init: function(options) {
-    if (options.onEvent != null) {
+    if (options.onEvent) {
       return this(options.onEvent);
     }
   },
@@ -110,83 +124,105 @@ module.exports = Event = Factory("Event", {
     }));
   },
   reset: function() {
-    var i, len, listener, listeners;
-    listeners = this._listeners;
-    if (!listeners) {
+    var i, len, listener, oldValue;
+    oldValue = this._listeners;
+    if (!oldValue) {
       return;
     }
-    if (isType(listeners, Listener)) {
-      listeners._defuse();
+    if (oldValue.constructor === Listener) {
+      oldValue._defuse();
     } else {
-      for (i = 0, len = listeners.length; i < len; i++) {
-        listener = listeners[i];
+      for (i = 0, len = oldValue.length; i < len; i++) {
+        listener = oldValue[i];
         listener._defuse();
       }
     }
-    this._listeners = null;
+    this._setListeners(null, 0);
   },
   _attachListener: function(listener) {
+    var oldValue;
     assertType(listener, Listener);
-    this._listeners = this._retainListener(listener, this._listeners);
+    oldValue = this._listeners;
+    if (!oldValue) {
+      this._setListeners(listener, 1);
+    } else if (oldValue.constructor === Listener) {
+      this._setListeners([oldValue, listener], 2);
+    } else {
+      oldValue.push(listener);
+      this._setListeners(oldValue, oldValue.length);
+    }
     this._onListen(listener);
     return listener;
-  },
-  _retainListener: function(listener, oldValue) {
-    if (!oldValue) {
-      return listener;
-    }
-    if (isType(oldValue, Listener)) {
-      return [oldValue, listener];
-    }
-    oldValue.push(listener);
-    return oldValue;
   },
   _onListen: function(listener) {
     return didListen.get().emit(this, listener);
   },
   _notifyListeners: function(scope, args) {
-    var listeners;
-    listeners = this._listeners;
-    if (!listeners) {
+    var i, len, listener, oldValue;
+    oldValue = this._listeners;
+    if (!oldValue) {
       return;
     }
-    if (isType(listeners, Listener)) {
-      if (listeners.notify(scope, args)) {
-        return;
-      }
-      this._listeners = null;
+    this._isNotifying = true;
+    if (oldValue.constructor === Listener) {
+      oldValue.notify(scope, args);
     } else {
-      listeners = listeners.filter(function(listener) {
-        return listener.notify(scope, args);
-      });
-      if (listeners.length === 0) {
-        this._listeners = null;
-      } else if (listeners.length === 1) {
-        this._listeners = listeners[0];
+      for (i = 0, len = oldValue.length; i < len; i++) {
+        listener = oldValue[i];
+        listener.notify(scope, args);
+      }
+    }
+    this._isNotifying = false;
+    return this._detachListeners(this._detachQueue);
+  },
+  _detachListener: function(listener) {
+    var index, newCount, oldValue;
+    if (this._isNotifying) {
+      this._detachQueue.push(listener);
+      return;
+    }
+    oldValue = this._listeners;
+    if (oldValue.constructor === Listener) {
+      assert(listener === oldValue);
+      this._setListeners(null, 0);
+    } else {
+      index = oldValue.indexOf(listener);
+      assert(index >= 0);
+      oldValue.splice(index, 1);
+      newCount = oldValue.length;
+      if (newCount === 1) {
+        this._setListeners(oldValue[0], 1);
       } else {
-        this._listeners = listeners;
+        this._setListeners(oldValue, newCount);
       }
     }
   },
-  _detachListener: function(listener) {
-    var index, listeners;
-    listeners = this._listeners;
-    if (isType(listeners, Listener)) {
-      if (listener !== listeners) {
-        return;
-      }
-      this._listeners = null;
-    } else {
-      index = listeners.indexOf(listener);
-      if (index < 0) {
-        return;
-      }
-      listeners.splice(index, 1);
-      if (listeners.length > 1) {
-        return;
-      }
-      this._listeners = listeners[0];
+  _detachListeners: function(listeners) {
+    var count, i, len, listener;
+    count = listeners.length;
+    if (count === 0) {
+      return;
     }
+    if (count === 1) {
+      this._detachListener(listeners[0]);
+    } else {
+      for (i = 0, len = listeners.length; i < len; i++) {
+        listener = listeners[i];
+        this._detachListener(listener);
+      }
+    }
+    return listeners.length = 0;
+  },
+  _setListeners: function(newValue, newCount) {
+    assert(newCount !== this._listenerCount);
+    if (newValue !== this._listeners) {
+      this._listeners = newValue;
+    }
+    this._listenerCount = newCount;
+    if (!this._onSetListeners) {
+      return;
+    }
+    return this._onSetListeners(newValue, newCount);
   }
 });
 
