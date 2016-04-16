@@ -3,6 +3,7 @@
 
 emptyFunction = require "emptyFunction"
 Factory = require "factory"
+define = require "define"
 
 module.exports =
 Listener = Factory "Listener",
@@ -33,19 +34,30 @@ Listener = Factory "Listener",
 
     _onStop: options.onStop
 
-  initValues: ->
+  init: ->
 
-    _calls: 0
+    isLimited =
 
-  notify: (scope, args) ->
-    @_calls += 1
-    @_onEvent.apply scope, args
-    @stop() if @_calls is @maxCalls
-    return
+    if @maxCalls is Infinity
+      @notify = @_notifyUnlimited
+
+    else
+      define this, "_calls", 0
+      @notify = @_notifyLimited
 
   stop: ->
     @_defuse()
     @_onStop this
+    return
+
+  _notifyUnlimited: (scope, args) ->
+    @_onEvent.apply scope, args
+    return
+
+  _notifyLimited: (scope, args) ->
+    @_calls += 1
+    @_onEvent.apply scope, args
+    @stop() if @_calls is @maxCalls
     return
 
   _defuse: ->

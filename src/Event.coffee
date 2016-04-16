@@ -8,6 +8,8 @@
 emptyFunction = require "emptyFunction"
 LazyVar = require "lazy-var"
 Factory = require "factory"
+Tracer = require "tracer"
+guard = require "guard"
 
 Listener = require "./Listener"
 
@@ -40,6 +42,10 @@ Event = Factory "Event",
   optionTypes:
     onEvent: Function.Maybe
     onSetListeners: Function.Maybe
+    maxRecursion: Number
+
+  optionDefaults:
+    maxRecursion: 0
 
   customValues:
 
@@ -49,12 +55,19 @@ Event = Factory "Event",
     emit: lazy: ->
       self = this
       return ->
-        self._notifyListeners this, arguments
+        traceEmit = Tracer "Event::emit()" if isDev
+        args = arguments
+        guard => self._notifyListeners this, args
+        .fail (error) => throwFailure error, { event: self, stack: [ traceEmit(), @_traceInit() ] }
 
     emitArgs: lazy: ->
       self = this
       return (args) ->
-        self._notifyListeners this, args
+        traceEmit = Tracer "Event::emitArgs()" if isDev
+        guard => self._notifyListeners this, args
+        .fail (error) => throwFailure error,
+          stack: [ traceEmit(), @_traceInit() ]
+          event: self
 
     listenable: lazy: ->
       self = (options) => this options
@@ -65,11 +78,17 @@ Event = Factory "Event",
 
     _isNotifying: no
 
+    _recursionCount: 0
+
+    _maxRecursion: options.maxRecursion
+
     _detachQueue: []
 
     _listeners: null
 
     _onSetListeners: options.onSetListeners
+
+    _traceInit: Tracer "Event()" if isDev
 
   initReactiveValues: ->
 
@@ -151,7 +170,13 @@ Event = Factory "Event",
 
     return unless oldValue
 
-    @_isNotifying = yes
+    if wasNotifying = @_isNotifying
+      @_recursionCount += 1
+      assert @_recursionCount <= @_maxRecursion,
+        reason: "Event is stuck in infinite recursion!"
+
+    else
+      @_isNotifying = yes
 
     if oldValue.constructor is Listener
       oldValue.notify scope, args
@@ -159,7 +184,9 @@ Event = Factory "Event",
     else
       listener.notify scope, args for listener in oldValue
 
-    @_isNotifying = no
+    unless wasNotifying
+      @_isNotifying = no
+      @_recursionCount = 0
 
     @_detachListeners @_detachQueue
 

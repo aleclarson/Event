@@ -1,4 +1,4 @@
-var Event, Factory, LazyVar, Listener, Void, assert, assertType, didListen, emptyFunction, ref, throwFailure;
+var Event, Factory, LazyVar, Listener, Tracer, Void, assert, assertType, didListen, emptyFunction, guard, ref, throwFailure;
 
 ref = require("type-utils"), Void = ref.Void, assert = ref.assert, assertType = ref.assertType;
 
@@ -9,6 +9,10 @@ emptyFunction = require("emptyFunction");
 LazyVar = require("lazy-var");
 
 Factory = require("factory");
+
+Tracer = require("tracer");
+
+guard = require("guard");
 
 Listener = require("./Listener");
 
@@ -41,7 +45,11 @@ module.exports = Event = Factory("Event", {
   },
   optionTypes: {
     onEvent: Function.Maybe,
-    onSetListeners: Function.Maybe
+    onSetListeners: Function.Maybe,
+    maxRecursion: Number
+  },
+  optionDefaults: {
+    maxRecursion: 0
   },
   customValues: {
     listenerCount: {
@@ -54,7 +62,23 @@ module.exports = Event = Factory("Event", {
         var self;
         self = this;
         return function() {
-          return self._notifyListeners(this, arguments);
+          var args, traceEmit;
+          if (isDev) {
+            traceEmit = Tracer("Event::emit()");
+          }
+          args = arguments;
+          return guard((function(_this) {
+            return function() {
+              return self._notifyListeners(_this, args);
+            };
+          })(this)).fail((function(_this) {
+            return function(error) {
+              return throwFailure(error, {
+                event: self,
+                stack: [traceEmit(), _this._traceInit()]
+              });
+            };
+          })(this));
         };
       }
     },
@@ -63,7 +87,22 @@ module.exports = Event = Factory("Event", {
         var self;
         self = this;
         return function(args) {
-          return self._notifyListeners(this, args);
+          var traceEmit;
+          if (isDev) {
+            traceEmit = Tracer("Event::emitArgs()");
+          }
+          return guard((function(_this) {
+            return function() {
+              return self._notifyListeners(_this, args);
+            };
+          })(this)).fail((function(_this) {
+            return function(error) {
+              return throwFailure(error, {
+                stack: [traceEmit(), _this._traceInit()],
+                event: self
+              });
+            };
+          })(this));
         };
       }
     },
@@ -87,9 +126,12 @@ module.exports = Event = Factory("Event", {
   initValues: function(options) {
     return {
       _isNotifying: false,
+      _recursionCount: 0,
+      _maxRecursion: options.maxRecursion,
       _detachQueue: [],
       _listeners: null,
-      _onSetListeners: options.onSetListeners
+      _onSetListeners: options.onSetListeners,
+      _traceInit: isDev ? Tracer("Event()") : void 0
     };
   },
   initReactiveValues: function() {
@@ -158,12 +200,19 @@ module.exports = Event = Factory("Event", {
     return didListen.get().emit(this, listener);
   },
   _notifyListeners: function(scope, args) {
-    var i, len, listener, oldValue;
+    var i, len, listener, oldValue, wasNotifying;
     oldValue = this._listeners;
     if (!oldValue) {
       return;
     }
-    this._isNotifying = true;
+    if (wasNotifying = this._isNotifying) {
+      this._recursionCount += 1;
+      assert(this._recursionCount <= this._maxRecursion, {
+        reason: "Event is stuck in infinite recursion!"
+      });
+    } else {
+      this._isNotifying = true;
+    }
     if (oldValue.constructor === Listener) {
       oldValue.notify(scope, args);
     } else {
@@ -172,7 +221,10 @@ module.exports = Event = Factory("Event", {
         listener.notify(scope, args);
       }
     }
-    this._isNotifying = false;
+    if (!wasNotifying) {
+      this._isNotifying = false;
+      this._recursionCount = 0;
+    }
     return this._detachListeners(this._detachQueue);
   },
   _detachListener: function(listener) {

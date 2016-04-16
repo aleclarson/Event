@@ -1,10 +1,12 @@
-var Factory, Listener, emptyFunction, isType;
+var Factory, Listener, define, emptyFunction, isType;
 
 isType = require("type-utils").isType;
 
 emptyFunction = require("emptyFunction");
 
 Factory = require("factory");
+
+define = require("define");
 
 module.exports = Listener = Factory("Listener", {
   optionTypes: {
@@ -38,21 +40,23 @@ module.exports = Listener = Factory("Listener", {
       _onStop: options.onStop
     };
   },
-  initValues: function() {
-    return {
-      _calls: 0
-    };
+  init: function() {
+    var isLimited;
+    return isLimited = this.maxCalls === Infinity ? this.notify = this._notifyUnlimited : (define(this, "_calls", 0), this.notify = this._notifyLimited);
   },
-  notify: function(scope, args) {
+  stop: function() {
+    this._defuse();
+    this._onStop(this);
+  },
+  _notifyUnlimited: function(scope, args) {
+    this._onEvent.apply(scope, args);
+  },
+  _notifyLimited: function(scope, args) {
     this._calls += 1;
     this._onEvent.apply(scope, args);
     if (this._calls === this.maxCalls) {
       this.stop();
     }
-  },
-  stop: function() {
-    this._defuse();
-    this._onStop(this);
   },
   _defuse: function() {
     this.notify = emptyFunction.thatReturnsFalse;
