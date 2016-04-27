@@ -1,5 +1,5 @@
 
-# event v1.0.0 ![locked](https://img.shields.io/badge/stability-locked-0084B6.svg?style=flat)
+# event v1.0.0 ![stable](https://img.shields.io/badge/stability-stable-4EBA0F.svg?style=flat)
 
 `Event` and `Listener` classes with a modern syntax.
 

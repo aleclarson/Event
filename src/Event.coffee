@@ -1,4 +1,6 @@
 
+require "isDev"
+
 { Void
   assert
   assertType } = require "type-utils"
@@ -58,7 +60,7 @@ Event = Factory "Event",
         traceEmit = Tracer "Event::emit()" if isDev
         args = arguments
         guard => self._notifyListeners this, args
-        .fail (error) => throwFailure error, { event: self, stack: [ traceEmit(), @_traceInit() ] }
+        .fail (error) => throwFailure error, { event: self, stack: [ traceEmit(), self._traceInit() ] }
 
     emitArgs: lazy: ->
       self = this
@@ -66,7 +68,7 @@ Event = Factory "Event",
         traceEmit = Tracer "Event::emitArgs()" if isDev
         guard => self._notifyListeners this, args
         .fail (error) => throwFailure error,
-          stack: [ traceEmit(), @_traceInit() ]
+          stack: [ traceEmit(), self._traceInit() ]
           event: self
 
     listenable: lazy: ->
@@ -197,6 +199,9 @@ Event = Factory "Event",
       return
 
     oldValue = @_listeners
+
+    assert oldValue?,
+      reason: "There are no listeners to be detached!"
 
     if oldValue.constructor is Listener
       assert listener is oldValue

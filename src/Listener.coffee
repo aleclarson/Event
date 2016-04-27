@@ -1,9 +1,13 @@
 
+require "isDev"
+
 { isType } = require "type-utils"
 
 emptyFunction = require "emptyFunction"
 Factory = require "factory"
 define = require "define"
+Tracer = require "tracer"
+guard = require "guard"
 
 module.exports =
 Listener = Factory "Listener",
@@ -34,9 +38,13 @@ Listener = Factory "Listener",
 
     _onStop: options.onStop
 
-  init: ->
+  initValues: (options) ->
 
-    isLimited =
+    _onDefuse: emptyFunction
+
+    _traceInit: Tracer "Listener()" if isDev
+
+  init: ->
 
     if @maxCalls is Infinity
       @notify = @_notifyUnlimited
@@ -51,16 +59,19 @@ Listener = Factory "Listener",
     return
 
   _notifyUnlimited: (scope, args) ->
-    @_onEvent.apply scope, args
+    guard => @_onEvent.apply scope, args
+    .fail (error) => throwFailure error, { scope, args, listener: this }
     return
 
   _notifyLimited: (scope, args) ->
     @_calls += 1
-    @_onEvent.apply scope, args
+    guard => @_onEvent.apply scope, args
+    .fail (error) => throwFailure error, { scope, args, listener: this }
     @stop() if @_calls is @maxCalls
     return
 
   _defuse: ->
     @notify = emptyFunction.thatReturnsFalse
     @_defuse = @stop = emptyFunction
+    @_onDefuse()
     return

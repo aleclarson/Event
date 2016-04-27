@@ -1,5 +1,7 @@
 var Event, Factory, LazyVar, Listener, Tracer, Void, assert, assertType, didListen, emptyFunction, guard, ref, throwFailure;
 
+require("isDev");
+
 ref = require("type-utils"), Void = ref.Void, assert = ref.assert, assertType = ref.assertType;
 
 throwFailure = require("failure").throwFailure;
@@ -75,7 +77,7 @@ module.exports = Event = Factory("Event", {
             return function(error) {
               return throwFailure(error, {
                 event: self,
-                stack: [traceEmit(), _this._traceInit()]
+                stack: [traceEmit(), self._traceInit()]
               });
             };
           })(this));
@@ -98,7 +100,7 @@ module.exports = Event = Factory("Event", {
           })(this)).fail((function(_this) {
             return function(error) {
               return throwFailure(error, {
-                stack: [traceEmit(), _this._traceInit()],
+                stack: [traceEmit(), self._traceInit()],
                 event: self
               });
             };
@@ -234,6 +236,9 @@ module.exports = Event = Factory("Event", {
       return;
     }
     oldValue = this._listeners;
+    assert(oldValue != null, {
+      reason: "There are no listeners to be detached!"
+    });
     if (oldValue.constructor === Listener) {
       assert(listener === oldValue);
       this._setListeners(null, 0);
