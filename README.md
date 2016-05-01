@@ -1,53 +1,71 @@
 
-# event v1.0.0 ![stable](https://img.shields.io/badge/stability-stable-4EBA0F.svg?style=flat)
+# event v2.0.0 ![stable](https://img.shields.io/badge/stability-stable-4EBA0F.svg?style=flat)
 
-`Event` and `Listener` classes with a modern syntax.
+Provides the `Event` and `Event.Listener` classes.
+
+### Event.optionTypes
 
 ```coffee
-Event = require "event"
+# The function called on every 'emit'.
+onEvent: Function.Maybe
 
-didEmit = Event()
+# The function called whenever a listener is added or removed.
+# The arguments look like [ listeners, listenerCount ].
+onSetListeners: Function.Maybe
 
-listener = didEmit ->
-  console.log "Emit detected!"
-
-didEmit.emit()
-
-listener.calls    # => 1
-listener.maxCalls # => Infinity
-
-listener.stop()
+# The limit of how many times the event can
+# call 'emit' while already emitting.
+# This catches infinite recursion.
+# Defaults to zero.
+maxRecursion: Number
 ```
 
-## Event
+### Event.properties
 
-An `Event` is responsible for storing and notifying its associated `Listener`s.
+```coffee
+# The number of active listeners.
+event.listenerCount
 
-#### Properties
+# A simple proxy for creating listeners.
+# Does not include the 'emit' method.
+event.listenable
+```
 
-- `listenable: Object { get }` - A proxy for creating `Listener`s for this `Event`. Does not allow `emit` calls.
+### Event.prototype
 
-#### Methods
+```coffee
+# Notify any listeners.
+# Pass the given arguments.
+event.emit 1, 2, 3
 
-- `emit(args...) -> Void` - Notifies all `Listener`s with the given arguments.
-- `emitArgs(args) -> Void` - Notifies all `Listener`s with the given array.
-- `this(onEvent: Function, maxCalls: [ Number, Void ]) -> Listener` - Creates a `Listener` for this `Event`. It will listen forever; unless stopped.
-- `once(onEvent: Function) -> Listener` - Creates a `Listener` for this `Event`. It will listen once; unless stopped.
-- `many(maxCalls: Number, onEvent: Function)` - Creates a `Listener` for this `Event`. It will listen up to `maxCalls` times; unless stopped.
-- `reset() -> Void` - Removes all associated `Listener`s.
+# Notify any listeners.
+# Pass this array as the arguments.
+event.emitArgs [ 1, 2, 3 ]
 
-## Listener
+# Create an 'Event.Listener' with the given function.
+# Listens until stopped manually.
+listener = event ->
 
-A `Listener` is responsible for calling its handler and tracking how many calls before listening stops.
+# Create an 'Event.Listener' with the given function.
+# Listens once, then stops itself.
+listener = event.once ->
 
-You should let the `Event` create & manage its `Listener`s. In most cases, you only need to touch a `Listener` if you want to call `listener.stop()`. Just remember that `event.reset()` exists for stopping every active `Listener`.
+# Create an 'Event.Listener' with the given function.
+# Listens X times, then stops itself.
+listener = event.many 5, ->
 
-#### Properties
+# Remove all listeners.
+event.reset()
+```
 
-- `calls: Number { get }`
-- `maxCalls: Number { get }`
+### Event.statics
 
-#### Methods
+```coffee
+# The listener class.
+# You normally do NOT call this manually.
+listener = Event.Listener {}
 
-- `notify(scope, args) -> Boolean` - Calls the handler, stops listening if necessary, and returns true if still listening.
-- `stop() -> Void` - Detaches the `Listener` from its `Event`; preventing the handler from being called.
+# An event that emits every time
+# an 'Event.Listener' is created.
+listener = Event.didListen ->
+```

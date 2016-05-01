@@ -1,115 +1,102 @@
 
 require "isDev"
 
-{ Void
-  assert
+{ assert
   assertType } = require "type-utils"
 
 { throwFailure } = require "failure"
 
 emptyFunction = require "emptyFunction"
 LazyVar = require "lazy-var"
-Factory = require "factory"
 Tracer = require "tracer"
 guard = require "guard"
+Type = require "Type"
 
-Listener = require "./Listener"
-
-didListen = LazyVar ->
-  event = Event()
-  event._onListen = emptyFunction
-  event
-
-module.exports =
-Event = Factory "Event",
-
-  statics: {
-    Listener
-    didListen: get: ->
-      didListen.get().listenable
+type = Type "Event", (onEvent) ->
+  @_attachListener Listener {
+    onEvent
+    onStop: @_detachListener
   }
 
-  initArguments: (options) ->
+type.createArguments (args) ->
 
-    assertType options, [ Object, Function, Void ]
+  if args[0] is undefined
+    args[0] = {}
 
-    unless options?
-      options = {}
+  else if isType args[0], Function
+    args[0] = { onEvent: args[0] }
 
-    else if options.constructor is Function
-      options = { onEvent: options }
+  assertType args[0], Object
 
-    [ options ]
+  return args
 
-  optionTypes:
-    onEvent: Function.Maybe
-    onSetListeners: Function.Maybe
-    maxRecursion: Number
+type.optionTypes =
+  onEvent: Function.Maybe
+  onSetListeners: Function.Maybe
+  maxRecursion: Number
 
-  optionDefaults:
-    maxRecursion: 0
+type.optionDefaults =
+  maxRecursion: 0
 
-  customValues:
+type.defineProperties
 
-    listenerCount: get: ->
-      @_listenerCount
+  listenerCount: get: ->
+    @_listenerCount
 
-    emit: lazy: ->
-      self = this
-      return ->
-        traceEmit = Tracer "Event::emit()" if isDev
-        args = arguments
-        guard => self._notifyListeners this, args
-        .fail (error) => throwFailure error, { event: self, stack: [ traceEmit(), self._traceInit() ] }
+  emit: lazy: ->
+    self = this
+    return ->
+      traceEmit = Tracer "Event::emit()" if isDev
+      args = arguments
+      guard => self._notifyListeners this, args
+      .fail (error) => throwFailure error, { event: self, stack: [ traceEmit(), @_traceInit() ] }
 
-    emitArgs: lazy: ->
-      self = this
-      return (args) ->
-        traceEmit = Tracer "Event::emitArgs()" if isDev
-        guard => self._notifyListeners this, args
-        .fail (error) => throwFailure error,
-          stack: [ traceEmit(), self._traceInit() ]
-          event: self
+  emitArgs: lazy: ->
+    self = this
+    return (args) ->
+      traceEmit = Tracer "Event::emitArgs()" if isDev
+      guard => self._notifyListeners this, args
+      .fail (error) => throwFailure error,
+        stack: [ traceEmit(), @_traceInit() ]
+        event: self
 
-    listenable: lazy: ->
-      self = (options) => this options
-      self.once = (options) => @once options
-      self
+  listenable: lazy: ->
+    self = (options) => this options
+    self.once = (options) => @once options
+    self
 
-  initValues: (options) ->
+type.defineValues
 
-    _isNotifying: no
+  _isNotifying: no
 
-    _recursionCount: 0
+  _recursionCount: 0
 
-    _maxRecursion: options.maxRecursion
+  _maxRecursion: (options) -> options.maxRecursion
 
-    _detachQueue: []
+  _detachQueue: []
 
-    _listeners: null
+  _listeners: null
 
-    _onSetListeners: options.onSetListeners
+  _onSetListeners: (options) -> options.onSetListeners
 
-    _traceInit: Tracer "Event()" if isDev
+if isDev
+  type.defineValues
+    _traceInit: -> Tracer "Event()"
 
-  initReactiveValues: ->
+type.defineReactiveValues
 
-    _listenerCount: 0
+  _listenerCount: 0
 
-  init: (options) ->
+type.initInstance (options) ->
 
-    if options.onEvent
-      this options.onEvent
+  if options.onEvent
+    this options.onEvent
 
-  boundMethods: [
-    "_detachListener"
-  ]
+type.bindMethods [
+  "_detachListener"
+]
 
-  func: (onEvent) ->
-    @_attachListener Listener {
-      onEvent
-      onStop: @_detachListener
-    }
+type.defineMethods
 
   once: (onEvent) ->
     @_attachListener Listener {
@@ -200,9 +187,6 @@ Event = Factory "Event",
 
     oldValue = @_listeners
 
-    assert oldValue?,
-      reason: "There are no listeners to be detached!"
-
     if oldValue.constructor is Listener
       assert listener is oldValue
       @_setListeners null, 0
@@ -237,3 +221,17 @@ Event = Factory "Event",
     return unless @_onSetListeners
 
     @_onSetListeners newValue, newCount
+
+type.defineStatics
+
+  Listener: Listener = require "./Listener"
+
+  didListen: get: ->
+    @_didListen.get().listenable
+
+  _didListen: LazyVar ->
+    event = Event()
+    event._onListen = emptyFunction
+    event
+
+module.exports = Event = type.build()

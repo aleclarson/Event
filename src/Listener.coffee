@@ -1,57 +1,50 @@
 
-require "isDev"
-
 { isType } = require "type-utils"
 
 emptyFunction = require "emptyFunction"
-Factory = require "factory"
-define = require "define"
 Tracer = require "tracer"
 guard = require "guard"
+Type = require "Type"
 
-module.exports =
-Listener = Factory "Listener",
+type = Type "Listener"
 
-  optionTypes:
-    onEvent: Function
-    onStop: Function
-    maxCalls: Number
+type.optionTypes =
+  onEvent: Function
+  onStop: Function
+  maxCalls: Number
 
-  optionDefaults:
-    onStop: emptyFunction
-    maxCalls: Infinity
+type.optionDefaults =
+  onStop: emptyFunction
+  maxCalls: Infinity
 
-  initArguments: (options) ->
-    options = { onEvent: options } if isType options, Function
-    [ options ]
+type.createArguments (args) ->
+  args[0] = { onEvent: args[0] } if isType args[0], Function
+  return args
 
-  customValues:
+type.defineFrozenValues
 
-    calls: get: ->
-      @_calls
+  maxCalls: (options) -> options.maxCalls
 
-  initFrozenValues: (options) ->
+  _onEvent: (options) -> options.onEvent
 
-    maxCalls: options.maxCalls
+  _onStop: (options) -> options.onStop
 
-    _onEvent: options.onEvent
+type.defineValues
 
-    _onStop: options.onStop
+  _onDefuse: -> emptyFunction
 
-  initValues: (options) ->
+  _traceInit: -> Tracer "Listener()" if isDev
 
-    _onDefuse: emptyFunction
+type.initInstance ->
 
-    _traceInit: Tracer "Listener()" if isDev
+  if @maxCalls is Infinity
+    @notify = @_notifyUnlimited
+    return
 
-  init: ->
+  @notify = @_notifyLimited
+  @calls = 0
 
-    if @maxCalls is Infinity
-      @notify = @_notifyUnlimited
-
-    else
-      define this, "_calls", 0
-      @notify = @_notifyLimited
+type.defineMethods
 
   stop: ->
     @_defuse()
@@ -75,3 +68,5 @@ Listener = Factory "Listener",
     @_defuse = @stop = emptyFunction
     @_onDefuse()
     return
+
+module.exports = type.build()
