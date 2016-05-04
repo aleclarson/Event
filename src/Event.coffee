@@ -1,9 +1,7 @@
 
 require "isDev"
 
-{ assert
-  assertType } = require "type-utils"
-
+{ isType, assert, assertType } = require "type-utils"
 { throwFailure } = require "failure"
 
 emptyFunction = require "emptyFunction"
@@ -18,18 +16,6 @@ type = Type "Event", (onEvent) ->
     onStop: @_detachListener
   }
 
-type.createArguments (args) ->
-
-  if args[0] is undefined
-    args[0] = {}
-
-  else if isType args[0], Function
-    args[0] = { onEvent: args[0] }
-
-  assertType args[0], Object
-
-  return args
-
 type.optionTypes =
   onEvent: Function.Maybe
   onSetListeners: Function.Maybe
@@ -37,6 +23,13 @@ type.optionTypes =
 
 type.optionDefaults =
   maxRecursion: 0
+
+type.createArguments (args) ->
+
+  if isType args[0], Function
+    args[0] = { onEvent: args[0] }
+
+  return args
 
 type.defineProperties
 
@@ -151,7 +144,7 @@ type.defineMethods
 
   # This broadcasts that a Listener has been attached to an Event.
   _onListen: (listener) ->
-    didListen.get().emit this, listener
+    Event._didListen.get().emit this, listener
 
   _notifyListeners: (scope, args) ->
 
