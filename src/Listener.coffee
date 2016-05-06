@@ -1,4 +1,5 @@
 
+{ throwFailure } = require "failure"
 { isType } = require "type-utils"
 
 emptyFunction = require "emptyFunction"
@@ -25,24 +26,24 @@ type.defineFrozenValues
 
   maxCalls: (options) -> options.maxCalls
 
+type.defineValues
+
+  calls: ->
+    return 0 if @maxCalls isnt Infinity
+
+  notify: ->
+    return @_notifyUnlimited if @maxCalls is Infinity
+    return @_notifyLimited
+
   _onEvent: (options) -> options.onEvent
 
   _onStop: (options) -> options.onStop
 
-type.defineValues
-
   _onDefuse: -> emptyFunction
 
-  _traceInit: -> Tracer "Listener()" if isDev
-
-type.initInstance ->
-
-  if @maxCalls is Infinity
-    @notify = @_notifyUnlimited
-    return
-
-  @notify = @_notifyLimited
-  @calls = 0
+if isDev
+  type.defineValues
+    _traceInit: -> Tracer "Listener()"
 
 type.defineMethods
 
@@ -57,10 +58,10 @@ type.defineMethods
     return
 
   _notifyLimited: (scope, args) ->
-    @_calls += 1
+    @calls += 1
     guard => @_onEvent.apply scope, args
     .fail (error) => throwFailure error, { scope, args, listener: this }
-    @stop() if @_calls is @maxCalls
+    @stop() if @calls is @maxCalls
     return
 
   _defuse: ->

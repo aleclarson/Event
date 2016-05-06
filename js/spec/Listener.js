@@ -14,7 +14,7 @@ describe("Listener", function() {
     it("increments the 'calls' property", function() {
       var event, listener;
       event = Event();
-      listener = event(emptyFunction);
+      listener = event.many(3, emptyFunction);
       listener.notify();
       expect(listener.calls).toBe(1);
       listener.notify();
@@ -33,7 +33,7 @@ describe("Listener", function() {
     it("detaches the Listener", function() {
       var event, listener;
       event = Event();
-      listener = event(emptyFunction);
+      listener = event.many(5, emptyFunction);
       event.emit();
       listener.stop();
       event.emit();

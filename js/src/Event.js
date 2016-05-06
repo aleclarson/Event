@@ -231,6 +231,7 @@ type.defineMethods({
       this._detachQueue.push(listener);
       return;
     }
+    assert(this._listeners, "No listeners are attached!");
     oldValue = this._listeners;
     if (oldValue.constructor === Listener) {
       assert(listener === oldValue);

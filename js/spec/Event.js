@@ -53,7 +53,7 @@ describe("Event", function() {
     it("works with just one Listener", function() {
       var event, listener;
       event = Event();
-      listener = event(emptyFunction);
+      listener = event.many(2, emptyFunction);
       event.emit();
       return expect(listener.calls).toBe(1);
     });
@@ -78,7 +78,7 @@ describe("Event", function() {
     it("is bound to the Event", function() {
       var emit, event, listener;
       event = Event();
-      listener = event(emptyFunction);
+      listener = event.many(2, emptyFunction);
       emit = event.emit;
       emit();
       return expect(listener.calls).toBe(1);

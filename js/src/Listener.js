@@ -1,4 +1,6 @@
-var Tracer, Type, emptyFunction, guard, isType, type;
+var Tracer, Type, emptyFunction, guard, isType, throwFailure, type;
+
+throwFailure = require("failure").throwFailure;
 
 isType = require("type-utils").isType;
 
@@ -35,34 +37,39 @@ type.createArguments(function(args) {
 type.defineFrozenValues({
   maxCalls: function(options) {
     return options.maxCalls;
+  }
+});
+
+type.defineValues({
+  calls: function() {
+    if (this.maxCalls !== Infinity) {
+      return 0;
+    }
+  },
+  notify: function() {
+    if (this.maxCalls === Infinity) {
+      return this._notifyUnlimited;
+    }
+    return this._notifyLimited;
   },
   _onEvent: function(options) {
     return options.onEvent;
   },
   _onStop: function(options) {
     return options.onStop;
-  }
-});
-
-type.defineValues({
+  },
   _onDefuse: function() {
     return emptyFunction;
-  },
-  _traceInit: function() {
-    if (isDev) {
-      return Tracer("Listener()");
-    }
   }
 });
 
-type.initInstance(function() {
-  if (this.maxCalls === Infinity) {
-    this.notify = this._notifyUnlimited;
-    return;
-  }
-  this.notify = this._notifyLimited;
-  return this.calls = 0;
-});
+if (isDev) {
+  type.defineValues({
+    _traceInit: function() {
+      return Tracer("Listener()");
+    }
+  });
+}
 
 type.defineMethods({
   stop: function() {
@@ -85,7 +92,7 @@ type.defineMethods({
     })(this));
   },
   _notifyLimited: function(scope, args) {
-    this._calls += 1;
+    this.calls += 1;
     guard((function(_this) {
       return function() {
         return _this._onEvent.apply(scope, args);
@@ -99,7 +106,7 @@ type.defineMethods({
         });
       };
     })(this));
-    if (this._calls === this.maxCalls) {
+    if (this.calls === this.maxCalls) {
       this.stop();
     }
   },

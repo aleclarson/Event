@@ -48,7 +48,7 @@ describe "Event", ->
 
     it "works with just one Listener", ->
       event = Event()
-      listener = event emptyFunction
+      listener = event.many 2, emptyFunction
       event.emit()
       expect(listener.calls).toBe 1
 
@@ -69,7 +69,7 @@ describe "Event", ->
 
     it "is bound to the Event", ->
       event = Event()
-      listener = event emptyFunction
+      listener = event.many 2, emptyFunction
       emit = event.emit
       emit()
       expect(listener.calls).toBe 1

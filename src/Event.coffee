@@ -178,6 +178,8 @@ type.defineMethods
       @_detachQueue.push listener
       return
 
+    assert @_listeners, "No listeners are attached!"
+
     oldValue = @_listeners
 
     if oldValue.constructor is Listener

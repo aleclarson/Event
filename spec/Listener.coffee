@@ -13,7 +13,7 @@ describe "Listener", ->
 
     it "increments the 'calls' property", ->
       event = Event()
-      listener = event emptyFunction
+      listener = event.many 3, emptyFunction
       listener.notify()
       expect(listener.calls).toBe 1
       listener.notify()
@@ -30,7 +30,7 @@ describe "Listener", ->
 
     it "detaches the Listener", ->
       event = Event()
-      listener = event emptyFunction
+      listener = event.many 5, emptyFunction
       event.emit()
       listener.stop()
       event.emit()
