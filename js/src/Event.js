@@ -53,14 +53,15 @@ type.defineProperties({
       var self;
       self = this;
       return function() {
-        var args, traceEmit;
+        var args, scope, traceEmit;
         if (isDev) {
           traceEmit = Tracer("Event::emit()");
         }
+        scope = self === this ? null : this;
         args = arguments;
         return guard((function(_this) {
           return function() {
-            return self._notifyListeners(_this, args);
+            return self._notifyListeners(scope, args);
           };
         })(this)).fail((function(_this) {
           return function(error) {
@@ -78,13 +79,14 @@ type.defineProperties({
       var self;
       self = this;
       return function(args) {
-        var traceEmit;
+        var scope, traceEmit;
         if (isDev) {
           traceEmit = Tracer("Event::emitArgs()");
         }
+        scope = self === this ? null : this;
         return guard((function(_this) {
           return function() {
-            return self._notifyListeners(_this, args);
+            return self._notifyListeners(scope, args);
           };
         })(this)).fail((function(_this) {
           return function(error) {

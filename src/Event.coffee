@@ -40,15 +40,17 @@ type.defineProperties
     self = this
     return ->
       traceEmit = Tracer "Event::emit()" if isDev
+      scope = if self is this then null else this
       args = arguments
-      guard => self._notifyListeners this, args
+      guard => self._notifyListeners scope, args
       .fail (error) => throwFailure error, { event: self, stack: [ traceEmit(), @_traceInit() ] }
 
   emitArgs: lazy: ->
     self = this
     return (args) ->
       traceEmit = Tracer "Event::emitArgs()" if isDev
-      guard => self._notifyListeners this, args
+      scope = if self is this then null else this
+      guard => self._notifyListeners scope, args
       .fail (error) => throwFailure error,
         stack: [ traceEmit(), @_traceInit() ]
         event: self

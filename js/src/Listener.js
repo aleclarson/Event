@@ -22,7 +22,7 @@ type.optionTypes = {
 
 type.optionDefaults = {
   onStop: emptyFunction,
-  maxCalls: Infinity
+  maxCalls: 2e308
 };
 
 type.createArguments(function(args) {
@@ -42,12 +42,12 @@ type.defineFrozenValues({
 
 type.defineValues({
   calls: function() {
-    if (this.maxCalls !== Infinity) {
+    if (this.maxCalls !== 2e308) {
       return 0;
     }
   },
   notify: function() {
-    if (this.maxCalls === Infinity) {
+    if (this.maxCalls === 2e308) {
       return this._notifyUnlimited;
     }
     return this._notifyLimited;
