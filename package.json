@@ -9,8 +9,7 @@
     "guard": "aleclarson/guard#1.0.0",
     "isDev": "aleclarson/isDev#1.0.0",
     "lazy-var": "aleclarson/lazy-var#2.0.0",
-    "tracer": "aleclarson/tracer#1.0.0",
-    "type-utils": "aleclarson/type-utils#1.0.0"
+    "tracer": "aleclarson/tracer#1.0.0"
   },
   "lotus": {
     "plugins": [

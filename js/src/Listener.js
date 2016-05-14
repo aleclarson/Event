@@ -2,11 +2,11 @@ var Tracer, Type, emptyFunction, guard, isType, throwFailure, type;
 
 throwFailure = require("failure").throwFailure;
 
-isType = require("type-utils").isType;
-
 emptyFunction = require("emptyFunction");
 
 Tracer = require("tracer");
+
+isType = require("isType");
 
 guard = require("guard");
 

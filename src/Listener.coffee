@@ -1,9 +1,9 @@
 
 { throwFailure } = require "failure"
-{ isType } = require "type-utils"
 
 emptyFunction = require "emptyFunction"
 Tracer = require "tracer"
+isType = require "isType"
 guard = require "guard"
 Type = require "Type"
 

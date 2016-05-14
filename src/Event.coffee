@@ -1,12 +1,14 @@
 
 require "isDev"
 
-{ isType, assert, assertType } = require "type-utils"
 { throwFailure } = require "failure"
 
 emptyFunction = require "emptyFunction"
+assertType = require "assertType"
 LazyVar = require "lazy-var"
 Tracer = require "tracer"
+isType = require "isType"
+assert = require "assert"
 guard = require "guard"
 Type = require "Type"
 

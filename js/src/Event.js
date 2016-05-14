@@ -1,16 +1,20 @@
-var Event, LazyVar, Listener, Tracer, Type, assert, assertType, emptyFunction, guard, isType, ref, throwFailure, type;
+var Event, LazyVar, Listener, Tracer, Type, assert, assertType, emptyFunction, guard, isType, throwFailure, type;
 
 require("isDev");
-
-ref = require("type-utils"), isType = ref.isType, assert = ref.assert, assertType = ref.assertType;
 
 throwFailure = require("failure").throwFailure;
 
 emptyFunction = require("emptyFunction");
 
+assertType = require("assertType");
+
 LazyVar = require("lazy-var");
 
 Tracer = require("tracer");
+
+isType = require("isType");
+
+assert = require("assert");
 
 guard = require("guard");
 
