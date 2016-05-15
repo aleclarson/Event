@@ -1,4 +1,4 @@
-var Event, LazyVar, Listener, Tracer, Type, assert, assertType, emptyFunction, guard, isType, throwFailure, type;
+var Event, Listener, Tracer, Type, assert, assertType, didListen, emptyFunction, getArgProp, guard, isType, throwFailure, type;
 
 require("isDev");
 
@@ -8,7 +8,7 @@ emptyFunction = require("emptyFunction");
 
 assertType = require("assertType");
 
-LazyVar = require("lazy-var");
+getArgProp = require("getArgProp");
 
 Tracer = require("tracer");
 
@@ -53,59 +53,35 @@ type.defineProperties({
     }
   },
   emit: {
-    lazy: function() {
+    get: function() {
       var self;
+      if (this._boundEmit) {
+        return this._boundEmit;
+      }
       self = this;
-      return function() {
-        var args, scope, traceEmit;
-        if (isDev) {
-          traceEmit = Tracer("Event::emit()");
-        }
-        scope = self === this ? null : this;
-        args = arguments;
-        return guard((function(_this) {
-          return function() {
-            return self._notifyListeners(scope, args);
-          };
-        })(this)).fail((function(_this) {
-          return function(error) {
-            return throwFailure(error, {
-              event: self,
-              stack: [traceEmit(), _this._traceInit()]
-            });
-          };
-        })(this));
+      return this._boundEmit = function() {
+        return self._emit.call(this, arguments, self);
       };
     }
   },
   emitArgs: {
-    lazy: function() {
+    get: function() {
       var self;
+      if (this._boundEmitArgs) {
+        return this._boundEmitArgs;
+      }
       self = this;
-      return function(args) {
-        var scope, traceEmit;
-        if (isDev) {
-          traceEmit = Tracer("Event::emitArgs()");
-        }
-        scope = self === this ? null : this;
-        return guard((function(_this) {
-          return function() {
-            return self._notifyListeners(scope, args);
-          };
-        })(this)).fail((function(_this) {
-          return function(error) {
-            return throwFailure(error, {
-              stack: [traceEmit(), _this._traceInit()],
-              event: self
-            });
-          };
-        })(this));
+      return this._boundEmitArgs = function(args) {
+        return self._emit.call(this, args, self);
       };
     }
   },
   listenable: {
-    lazy: function() {
+    get: function() {
       var self;
+      if (this._listenable) {
+        return this._listenable;
+      }
       self = (function(_this) {
         return function(options) {
           return _this(options);
@@ -116,22 +92,22 @@ type.defineProperties({
           return _this.once(options);
         };
       })(this);
-      return self;
+      return this._listenable = self;
     }
   }
 });
 
 type.defineValues({
   _isNotifying: false,
+  _listenerCount: 0,
   _recursionCount: 0,
-  _maxRecursion: function(options) {
-    return options.maxRecursion;
-  },
+  _maxRecursion: getArgProp("maxRecursion"),
   _detachQueue: [],
   _listeners: null,
-  _onSetListeners: function(options) {
-    return options.onSetListeners;
-  }
+  _onSetListeners: getArgProp("onSetListeners"),
+  _boundEmit: null,
+  _boundEmitArgs: null,
+  _listenable: null
 });
 
 if (isDev) {
@@ -141,10 +117,6 @@ if (isDev) {
     }
   });
 }
-
-type.defineReactiveValues({
-  _listenerCount: 0
-});
 
 type.initInstance(function(options) {
   if (options.onEvent) {
@@ -197,13 +169,34 @@ type.defineMethods({
       oldValue.push(listener);
       this._setListeners(oldValue, oldValue.length);
     }
-    this._onListen(listener);
+    this._didListen(listener);
     return listener;
   },
-  _onListen: function(listener) {
-    return Event._didListen.get().emit(this, listener);
+  _emit: function(args, event) {
+    var context, traceEmit;
+    if (isDev) {
+      traceEmit = Tracer("event._emit()");
+    }
+    context = this === event ? null : this;
+    return guard(function() {
+      return event._notifyListeners(context, args);
+    }).fail(function(error) {
+      var stack;
+      if (isDev) {
+        stack = [traceEmit(), event._traceInit()];
+      }
+      return throwFailure(error, {
+        event: event,
+        context: context,
+        args: args,
+        stack: stack
+      });
+    });
   },
-  _notifyListeners: function(scope, args) {
+  _didListen: function(listener) {
+    return didListen.emit(this, listener);
+  },
+  _notifyListeners: function(context, args) {
     var i, len, listener, oldValue, wasNotifying;
     oldValue = this._listeners;
     if (!oldValue) {
@@ -218,11 +211,11 @@ type.defineMethods({
       this._isNotifying = true;
     }
     if (oldValue.constructor === Listener) {
-      oldValue.notify(scope, args);
+      oldValue.notify(context, args);
     } else {
       for (i = 0, len = oldValue.length; i < len; i++) {
         listener = oldValue[i];
-        listener.notify(scope, args);
+        listener.notify(context, args);
       }
     }
     if (!wasNotifying) {
@@ -287,17 +280,15 @@ type.defineStatics({
   Listener: Listener = require("./Listener"),
   didListen: {
     get: function() {
-      return this._didListen.get().listenable;
+      return didListen.listenable;
     }
-  },
-  _didListen: LazyVar(function() {
-    var event;
-    event = Event();
-    event._onListen = emptyFunction;
-    return event;
-  })
+  }
 });
 
 module.exports = Event = type.build();
+
+didListen = Event();
+
+didListen._didListen = emptyFunction;
 
 //# sourceMappingURL=../../map/src/Event.map

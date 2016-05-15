@@ -5,7 +5,7 @@ require "isDev"
 
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
-LazyVar = require "lazy-var"
+getArgProp = require "getArgProp"
 Tracer = require "tracer"
 isType = require "isType"
 assert = require "assert"
@@ -38,51 +38,49 @@ type.defineProperties
   listenerCount: get: ->
     @_listenerCount
 
-  emit: lazy: ->
+  emit: get: ->
+    return @_boundEmit if @_boundEmit
     self = this
-    return ->
-      traceEmit = Tracer "Event::emit()" if isDev
-      scope = if self is this then null else this
-      args = arguments
-      guard => self._notifyListeners scope, args
-      .fail (error) => throwFailure error, { event: self, stack: [ traceEmit(), @_traceInit() ] }
+    return @_boundEmit = ->
+      self._emit.call this, arguments, self
 
-  emitArgs: lazy: ->
+  emitArgs: get: ->
+    return @_boundEmitArgs if @_boundEmitArgs
     self = this
-    return (args) ->
-      traceEmit = Tracer "Event::emitArgs()" if isDev
-      scope = if self is this then null else this
-      guard => self._notifyListeners scope, args
-      .fail (error) => throwFailure error,
-        stack: [ traceEmit(), @_traceInit() ]
-        event: self
+    return @_boundEmitArgs = (args) ->
+      self._emit.call this, args, self
 
-  listenable: lazy: ->
+  listenable: get: ->
+    return @_listenable if @_listenable
     self = (options) => this options
     self.once = (options) => @once options
-    self
+    return @_listenable = self
 
 type.defineValues
 
   _isNotifying: no
 
+  _listenerCount: 0
+
   _recursionCount: 0
 
-  _maxRecursion: (options) -> options.maxRecursion
+  _maxRecursion: getArgProp "maxRecursion"
 
   _detachQueue: []
 
   _listeners: null
 
-  _onSetListeners: (options) -> options.onSetListeners
+  _onSetListeners: getArgProp "onSetListeners"
 
-if isDev
-  type.defineValues
-    _traceInit: -> Tracer "Event()"
+  _boundEmit: null
 
-type.defineReactiveValues
+  _boundEmitArgs: null
 
-  _listenerCount: 0
+  _listenable: null
+
+if isDev then type.defineValues
+
+  _traceInit: -> Tracer "Event()"
 
 type.initInstance (options) ->
 
@@ -142,15 +140,22 @@ type.defineMethods
       oldValue.push listener
       @_setListeners oldValue, oldValue.length
 
-    @_onListen listener
+    @_didListen listener
 
     return listener
 
-  # This broadcasts that a Listener has been attached to an Event.
-  _onListen: (listener) ->
-    Event._didListen.get().emit this, listener
+  _emit: (args, event) ->
+    traceEmit = Tracer "event._emit()" if isDev
+    context = if this is event then null else this
+    guard -> event._notifyListeners context, args
+    .fail (error) ->
+      stack = [ traceEmit(), event._traceInit() ] if isDev
+      throwFailure error, { event, context, args, stack }
 
-  _notifyListeners: (scope, args) ->
+  _didListen: (listener) ->
+    didListen.emit this, listener
+
+  _notifyListeners: (context, args) ->
 
     oldValue = @_listeners
 
@@ -165,10 +170,10 @@ type.defineMethods
       @_isNotifying = yes
 
     if oldValue.constructor is Listener
-      oldValue.notify scope, args
+      oldValue.notify context, args
 
     else
-      listener.notify scope, args for listener in oldValue
+      listener.notify context, args for listener in oldValue
 
     unless wasNotifying
       @_isNotifying = no
@@ -226,11 +231,12 @@ type.defineStatics
   Listener: Listener = require "./Listener"
 
   didListen: get: ->
-    @_didListen.get().listenable
-
-  _didListen: LazyVar ->
-    event = Event()
-    event._onListen = emptyFunction
-    event
+    didListen.listenable
 
 module.exports = Event = type.build()
+
+# Emits whenever a Listener is attached to an Event.
+didListen = Event()
+
+# Prevent 'didListen' from triggering itself.
+didListen._didListen = emptyFunction

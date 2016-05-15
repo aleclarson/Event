@@ -76,32 +76,28 @@ type.defineMethods({
     this._defuse();
     this._onStop(this);
   },
-  _notifyUnlimited: function(scope, args) {
+  _notifyUnlimited: function(context, args) {
     guard((function(_this) {
       return function() {
-        return _this._onEvent.apply(scope, args);
+        return _this._onEvent.apply(context, args);
       };
     })(this)).fail((function(_this) {
       return function(error) {
         return throwFailure(error, {
-          scope: scope,
-          args: args,
           listener: _this
         });
       };
     })(this));
   },
-  _notifyLimited: function(scope, args) {
+  _notifyLimited: function(context, args) {
     this.calls += 1;
     guard((function(_this) {
       return function() {
-        return _this._onEvent.apply(scope, args);
+        return _this._onEvent.apply(context, args);
       };
     })(this)).fail((function(_this) {
       return function(error) {
         return throwFailure(error, {
-          scope: scope,
-          args: args,
           listener: _this
         });
       };

@@ -52,15 +52,15 @@ type.defineMethods
     @_onStop this
     return
 
-  _notifyUnlimited: (scope, args) ->
-    guard => @_onEvent.apply scope, args
-    .fail (error) => throwFailure error, { scope, args, listener: this }
+  _notifyUnlimited: (context, args) ->
+    guard => @_onEvent.apply context, args
+    .fail (error) => throwFailure error, { listener: this }
     return
 
-  _notifyLimited: (scope, args) ->
+  _notifyLimited: (context, args) ->
     @calls += 1
-    guard => @_onEvent.apply scope, args
-    .fail (error) => throwFailure error, { scope, args, listener: this }
+    guard => @_onEvent.apply context, args
+    .fail (error) => throwFailure error, { listener: this }
     @stop() if @calls is @maxCalls
     return
 

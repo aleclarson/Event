@@ -1,4 +1,6 @@
-var Event;
+var Event, getType;
+
+getType = require("getType");
 
 Event = require("../src/Event");
 

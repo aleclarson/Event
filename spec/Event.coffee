@@ -1,4 +1,6 @@
 
+getType = require "getType"
+
 Event = require "../src/Event"
 
 describe "Event", ->
