@@ -153,7 +153,7 @@ type.defineMethods
       throwFailure error, { event, context, args, stack }
 
   _didListen: (listener) ->
-    didListen.emit this, listener
+    didListen.emit listener, this
 
   _notifyListeners: (context, args) ->
 

@@ -194,7 +194,7 @@ type.defineMethods({
     });
   },
   _didListen: function(listener) {
-    return didListen.emit(this, listener);
+    return didListen.emit(listener, this);
   },
   _notifyListeners: function(context, args) {
     var i, len, listener, oldValue, wasNotifying;

@@ -41,6 +41,7 @@ type.defineFrozenValues({
 });
 
 type.defineValues({
+  start: emptyFunction,
   calls: function() {
     if (this.maxCalls !== 2e308) {
       return 0;
@@ -72,6 +73,12 @@ if (isDev) {
 }
 
 type.defineMethods({
+  start: function() {
+    delete this.stop;
+    delete this.notify;
+    delete this._defuse;
+    this.start = emptyFunction;
+  },
   stop: function() {
     this._defuse();
     this._onStop(this);
@@ -107,8 +114,10 @@ type.defineMethods({
     }
   },
   _defuse: function() {
+    delete this.start;
+    this.stop = emptyFunction;
     this.notify = emptyFunction.thatReturnsFalse;
-    this._defuse = this.stop = emptyFunction;
+    this._defuse = emptyFunction;
     this._onDefuse();
   }
 });

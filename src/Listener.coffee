@@ -28,6 +28,8 @@ type.defineFrozenValues
 
 type.defineValues
 
+  start: emptyFunction
+
   calls: ->
     return 0 if @maxCalls isnt Infinity
 
@@ -47,6 +49,13 @@ if isDev
 
 type.defineMethods
 
+  start: ->
+    delete @stop
+    delete @notify
+    delete @_defuse
+    @start = emptyFunction
+    return
+
   stop: ->
     @_defuse()
     @_onStop this
@@ -65,8 +74,10 @@ type.defineMethods
     return
 
   _defuse: ->
+    delete @start
+    @stop = emptyFunction
     @notify = emptyFunction.thatReturnsFalse
-    @_defuse = @stop = emptyFunction
+    @_defuse = emptyFunction
     @_onDefuse()
     return
 
