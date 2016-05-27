@@ -7,7 +7,7 @@ Provides the `Event` and `Event.Listener` classes.
 
 ```coffee
 # The function called on every 'emit'.
-onEvent: Function.Maybe
+onEmit: Function.Maybe
 
 # The function called whenever a listener is added or removed.
 # The arguments look like [ listeners, listenerCount ].

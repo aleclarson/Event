@@ -1,16 +1,15 @@
 
-{ throwFailure } = require "failure"
+require "isDev"
 
 emptyFunction = require "emptyFunction"
+getArgProp = require "getArgProp"
 Tracer = require "tracer"
-isType = require "isType"
-guard = require "guard"
 Type = require "Type"
 
 type = Type "Listener"
 
 type.optionTypes =
-  onEvent: Function
+  onEmit: Function
   onStop: Function
   maxCalls: Number
 
@@ -18,28 +17,30 @@ type.optionDefaults =
   onStop: emptyFunction
   maxCalls: Infinity
 
-type.createArguments (args) ->
-  args[0] = { onEvent: args[0] } if isType args[0], Function
-  return args
+type.initArguments (args) ->
+
+  if args[0] instanceof Function
+    args[0] = onEmit: args[0]
 
 type.defineFrozenValues
 
-  maxCalls: (options) -> options.maxCalls
+  maxCalls: getArgProp "maxCalls"
 
 type.defineValues
 
-  start: emptyFunction
+  start: -> emptyFunction
 
-  calls: ->
-    return 0 if @maxCalls isnt Infinity
+  stop: -> @_stopImpl
 
-  notify: ->
-    return @_notifyUnlimited if @maxCalls is Infinity
-    return @_notifyLimited
+  notify: -> @_getNotifyImpl()
 
-  _onEvent: (options) -> options.onEvent
+  calls: -> 0 if @maxCalls isnt Infinity
 
-  _onStop: (options) -> options.onStop
+  _defuse: -> @_defuseImpl
+
+  _onEmit: getArgProp "onEmit"
+
+  _onStop: getArgProp "onStop"
 
   _onDefuse: -> emptyFunction
 
@@ -49,34 +50,36 @@ if isDev
 
 type.defineMethods
 
-  start: ->
-    delete @stop
-    delete @notify
-    delete @_defuse
-    @start = emptyFunction
+  _getNotifyImpl: ->
+    return @_unlimitedImpl if @maxCalls is Infinity
+    return @_limitedImpl
+
+  _unlimitedImpl: (context, args) ->
+    @_onEmit.apply context, args
     return
 
-  stop: ->
+  _limitedImpl: (context, args) ->
+    @calls += 1
+    @_onEmit.apply context, args
+    @stop() if @calls is @maxCalls
+    return
+
+  _startImpl: ->
+    @start = emptyFunction
+    @notify = @_getNotifyImpl()
+    @stop = @_stopImpl
+    @_defuse = @_defuseImpl
+    return
+
+  _stopImpl: ->
     @_defuse()
     @_onStop this
     return
 
-  _notifyUnlimited: (context, args) ->
-    guard => @_onEvent.apply context, args
-    .fail (error) => throwFailure error, { listener: this }
-    return
-
-  _notifyLimited: (context, args) ->
-    @calls += 1
-    guard => @_onEvent.apply context, args
-    .fail (error) => throwFailure error, { listener: this }
-    @stop() if @calls is @maxCalls
-    return
-
-  _defuse: ->
-    delete @start
+  _defuseImpl: ->
+    @start = @_startImpl
+    @notify = emptyFunction
     @stop = emptyFunction
-    @notify = emptyFunction.thatReturnsFalse
     @_defuse = emptyFunction
     @_onDefuse()
     return

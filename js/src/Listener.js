@@ -1,21 +1,19 @@
-var Tracer, Type, emptyFunction, guard, isType, throwFailure, type;
+var Tracer, Type, emptyFunction, getArgProp, type;
 
-throwFailure = require("failure").throwFailure;
+require("isDev");
 
 emptyFunction = require("emptyFunction");
 
+getArgProp = require("getArgProp");
+
 Tracer = require("tracer");
-
-isType = require("isType");
-
-guard = require("guard");
 
 Type = require("Type");
 
 type = Type("Listener");
 
 type.optionTypes = {
-  onEvent: Function,
+  onEmit: Function,
   onStop: Function,
   maxCalls: Number
 };
@@ -25,40 +23,38 @@ type.optionDefaults = {
   maxCalls: 2e308
 };
 
-type.createArguments(function(args) {
-  if (isType(args[0], Function)) {
-    args[0] = {
-      onEvent: args[0]
+type.initArguments(function(args) {
+  if (args[0] instanceof Function) {
+    return args[0] = {
+      onEmit: args[0]
     };
   }
-  return args;
 });
 
 type.defineFrozenValues({
-  maxCalls: function(options) {
-    return options.maxCalls;
-  }
+  maxCalls: getArgProp("maxCalls")
 });
 
 type.defineValues({
-  start: emptyFunction,
+  start: function() {
+    return emptyFunction;
+  },
+  stop: function() {
+    return this._stopImpl;
+  },
+  notify: function() {
+    return this._getNotifyImpl();
+  },
   calls: function() {
     if (this.maxCalls !== 2e308) {
       return 0;
     }
   },
-  notify: function() {
-    if (this.maxCalls === 2e308) {
-      return this._notifyUnlimited;
-    }
-    return this._notifyLimited;
+  _defuse: function() {
+    return this._defuseImpl;
   },
-  _onEvent: function(options) {
-    return options.onEvent;
-  },
-  _onStop: function(options) {
-    return options.onStop;
-  },
+  _onEmit: getArgProp("onEmit"),
+  _onStop: getArgProp("onStop"),
   _onDefuse: function() {
     return emptyFunction;
   }
@@ -73,50 +69,36 @@ if (isDev) {
 }
 
 type.defineMethods({
-  start: function() {
-    delete this.stop;
-    delete this.notify;
-    delete this._defuse;
-    this.start = emptyFunction;
+  _getNotifyImpl: function() {
+    if (this.maxCalls === 2e308) {
+      return this._unlimitedImpl;
+    }
+    return this._limitedImpl;
   },
-  stop: function() {
-    this._defuse();
-    this._onStop(this);
+  _unlimitedImpl: function(context, args) {
+    this._onEmit.apply(context, args);
   },
-  _notifyUnlimited: function(context, args) {
-    guard((function(_this) {
-      return function() {
-        return _this._onEvent.apply(context, args);
-      };
-    })(this)).fail((function(_this) {
-      return function(error) {
-        return throwFailure(error, {
-          listener: _this
-        });
-      };
-    })(this));
-  },
-  _notifyLimited: function(context, args) {
+  _limitedImpl: function(context, args) {
     this.calls += 1;
-    guard((function(_this) {
-      return function() {
-        return _this._onEvent.apply(context, args);
-      };
-    })(this)).fail((function(_this) {
-      return function(error) {
-        return throwFailure(error, {
-          listener: _this
-        });
-      };
-    })(this));
+    this._onEmit.apply(context, args);
     if (this.calls === this.maxCalls) {
       this.stop();
     }
   },
-  _defuse: function() {
-    delete this.start;
+  _startImpl: function() {
+    this.start = emptyFunction;
+    this.notify = this._getNotifyImpl();
+    this.stop = this._stopImpl;
+    this._defuse = this._defuseImpl;
+  },
+  _stopImpl: function() {
+    this._defuse();
+    this._onStop(this);
+  },
+  _defuseImpl: function() {
+    this.start = this._startImpl;
+    this.notify = emptyFunction;
     this.stop = emptyFunction;
-    this.notify = emptyFunction.thatReturnsFalse;
     this._defuse = emptyFunction;
     this._onDefuse();
   }

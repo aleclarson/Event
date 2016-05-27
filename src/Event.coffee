@@ -1,25 +1,20 @@
 
 require "isDev"
 
-{ throwFailure } = require "failure"
-
 emptyFunction = require "emptyFunction"
-assertType = require "assertType"
 getArgProp = require "getArgProp"
 Tracer = require "tracer"
-isType = require "isType"
 assert = require "assert"
-guard = require "guard"
 Type = require "Type"
 
-type = Type "Event", (onEvent) ->
+type = Type "Event", (onEmit) ->
   @_attachListener Listener {
-    onEvent
+    onEmit
     onStop: @_detachListener
   }
 
 type.optionTypes =
-  onEvent: Function.Maybe
+  onEmit: Function.Maybe
   onSetListeners: Function.Maybe
   maxRecursion: Number
 
@@ -28,8 +23,8 @@ type.optionDefaults =
 
 type.createArguments (args) ->
 
-  if isType args[0], Function
-    args[0] = { onEvent: args[0] }
+  if args[0] instanceof Function
+    args[0] = { onEmit: args[0] }
 
   return args
 
@@ -84,8 +79,8 @@ if isDev then type.defineValues
 
 type.initInstance (options) ->
 
-  if options.onEvent
-    this options.onEvent
+  if options.onEmit
+    this options.onEmit
 
 type.bindMethods [
   "_detachListener"
@@ -93,16 +88,16 @@ type.bindMethods [
 
 type.defineMethods
 
-  once: (onEvent) ->
+  once: (onEmit) ->
     @_attachListener Listener {
-      onEvent
+      onEmit
       maxCalls: 1
       onStop: @_detachListener
     }
 
-  many: (maxCalls, onEvent) ->
+  many: (maxCalls, onEmit) ->
     @_attachListener Listener {
-      onEvent
+      onEmit
       maxCalls
       onStop: @_detachListener
     }
@@ -126,8 +121,6 @@ type.defineMethods
 
   _attachListener: (listener) ->
 
-    assertType listener, Listener
-
     oldValue = @_listeners
 
     unless oldValue
@@ -145,12 +138,8 @@ type.defineMethods
     return listener
 
   _emit: (args, event) ->
-    traceEmit = Tracer "event._emit()" if isDev
     context = if this is event then null else this
-    guard -> event._notifyListeners context, args
-    .fail (error) ->
-      stack = [ traceEmit(), event._traceInit() ] if isDev
-      throwFailure error, { event, context, args, stack }
+    event._notifyListeners context, args
 
   _didListen: (listener) ->
     didListen.emit listener, this

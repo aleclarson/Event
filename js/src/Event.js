@@ -1,34 +1,26 @@
-var Event, Listener, Tracer, Type, assert, assertType, didListen, emptyFunction, getArgProp, guard, isType, throwFailure, type;
+var Event, Listener, Tracer, Type, assert, didListen, emptyFunction, getArgProp, type;
 
 require("isDev");
 
-throwFailure = require("failure").throwFailure;
-
 emptyFunction = require("emptyFunction");
-
-assertType = require("assertType");
 
 getArgProp = require("getArgProp");
 
 Tracer = require("tracer");
 
-isType = require("isType");
-
 assert = require("assert");
-
-guard = require("guard");
 
 Type = require("Type");
 
-type = Type("Event", function(onEvent) {
+type = Type("Event", function(onEmit) {
   return this._attachListener(Listener({
-    onEvent: onEvent,
+    onEmit: onEmit,
     onStop: this._detachListener
   }));
 });
 
 type.optionTypes = {
-  onEvent: Function.Maybe,
+  onEmit: Function.Maybe,
   onSetListeners: Function.Maybe,
   maxRecursion: Number
 };
@@ -38,9 +30,9 @@ type.optionDefaults = {
 };
 
 type.createArguments(function(args) {
-  if (isType(args[0], Function)) {
+  if (args[0] instanceof Function) {
     args[0] = {
-      onEvent: args[0]
+      onEmit: args[0]
     };
   }
   return args;
@@ -119,24 +111,24 @@ if (isDev) {
 }
 
 type.initInstance(function(options) {
-  if (options.onEvent) {
-    return this(options.onEvent);
+  if (options.onEmit) {
+    return this(options.onEmit);
   }
 });
 
 type.bindMethods(["_detachListener"]);
 
 type.defineMethods({
-  once: function(onEvent) {
+  once: function(onEmit) {
     return this._attachListener(Listener({
-      onEvent: onEvent,
+      onEmit: onEmit,
       maxCalls: 1,
       onStop: this._detachListener
     }));
   },
-  many: function(maxCalls, onEvent) {
+  many: function(maxCalls, onEmit) {
     return this._attachListener(Listener({
-      onEvent: onEvent,
+      onEmit: onEmit,
       maxCalls: maxCalls,
       onStop: this._detachListener
     }));
@@ -159,7 +151,6 @@ type.defineMethods({
   },
   _attachListener: function(listener) {
     var oldValue;
-    assertType(listener, Listener);
     oldValue = this._listeners;
     if (!oldValue) {
       this._setListeners(listener, 1);
@@ -173,25 +164,9 @@ type.defineMethods({
     return listener;
   },
   _emit: function(args, event) {
-    var context, traceEmit;
-    if (isDev) {
-      traceEmit = Tracer("event._emit()");
-    }
+    var context;
     context = this === event ? null : this;
-    return guard(function() {
-      return event._notifyListeners(context, args);
-    }).fail(function(error) {
-      var stack;
-      if (isDev) {
-        stack = [traceEmit(), event._traceInit()];
-      }
-      return throwFailure(error, {
-        event: event,
-        context: context,
-        args: args,
-        stack: stack
-      });
-    });
+    return event._notifyListeners(context, args);
   },
   _didListen: function(listener) {
     return didListen.emit(listener, this);
