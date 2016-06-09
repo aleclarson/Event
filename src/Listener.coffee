@@ -6,82 +6,81 @@ getArgProp = require "getArgProp"
 Tracer = require "tracer"
 Type = require "Type"
 
-type = Type "Listener"
-
-type.optionTypes =
-  onEmit: Function
-  onStop: Function
-  maxCalls: Number
-
-type.optionDefaults =
-  onStop: emptyFunction
-  maxCalls: Infinity
+type = Type "EventListener"
 
 type.initArguments (args) ->
-
   if args[0] instanceof Function
-    args[0] = onEmit: args[0]
+    args[1] = args[0]
+    args[0] = undefined
 
-type.defineFrozenValues
+type.argumentTypes =
+  maxCalls: Number
+  onNotify: Function
+  onDefuse: Function
 
-  maxCalls: getArgProp "maxCalls"
+type.argumentDefaults =
+  maxCalls: Infinity
+  onDefuse: emptyFunction
 
 type.defineValues
 
-  start: -> emptyFunction
-
-  stop: -> @_stopImpl
-
-  notify: -> @_getNotifyImpl()
+  maxCalls: getArgProp 0
 
   calls: -> 0 if @maxCalls isnt Infinity
 
-  _defuse: -> @_defuseImpl
+  notify: -> @_getNotifyImpl()
 
-  _onEmit: getArgProp "onEmit"
+  _stopped: no
 
-  _onStop: getArgProp "onStop"
+  _onNotify: getArgProp 1
 
-  _onDefuse: -> emptyFunction
+  _onDefuse: getArgProp 2
 
-if isDev
-  type.defineValues
-    _traceInit: -> Tracer "Listener()"
+isDev and type.defineValues
+
+  _traceInit: -> Tracer "Listener()"
+
+type.definePrototype
+
+  isListening: get: ->
+    @_stopped is no
 
 type.defineMethods
+
+  start: ->
+    return if not @_stopped
+    @_stopped = no
+    @notify = @_getNotifyImpl()
+    return
+
+  stop: ->
+    return if @_stopped
+    @_stopped = yes
+    @notify = emptyFunction
+    return
+
+  defuse: ->
+    @_stopped = yes
+    @start = emptyFunction
+    @notify = emptyFunction
+    @stop = emptyFunction
+    @defuse = emptyFunction
+    @_onDefuse this
+    @_onDefuse = null
+    return
 
   _getNotifyImpl: ->
     return @_unlimitedImpl if @maxCalls is Infinity
     return @_limitedImpl
 
   _unlimitedImpl: (context, args) ->
-    @_onEmit.apply context, args
+    @_onNotify.apply context, args
     return
 
   _limitedImpl: (context, args) ->
     @calls += 1
-    @_onEmit.apply context, args
-    @stop() if @calls is @maxCalls
-    return
-
-  _startImpl: ->
-    @start = emptyFunction
-    @notify = @_getNotifyImpl()
-    @stop = @_stopImpl
-    @_defuse = @_defuseImpl
-    return
-
-  _stopImpl: ->
-    @_defuse()
-    @_onStop this
-    return
-
-  _defuseImpl: ->
-    @start = @_startImpl
-    @notify = emptyFunction
-    @stop = emptyFunction
-    @_defuse = emptyFunction
-    @_onDefuse()
+    @_onNotify.apply context, args
+    @defuse() if @calls is @maxCalls
     return
 
 module.exports = type.build()

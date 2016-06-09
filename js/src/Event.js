@@ -12,27 +12,25 @@ assert = require("assert");
 
 Type = require("Type");
 
-type = Type("Event", function(onEmit) {
-  return this._attachListener(Listener({
-    onEmit: onEmit,
-    onStop: this._detachListener
-  }));
+type = Type("Event", function(onNotify) {
+  return this._createListener(2e308, onNotify);
 });
 
 type.optionTypes = {
-  onEmit: Function.Maybe,
-  onSetListeners: Function.Maybe,
+  onNotify: Function.Maybe,
+  onSetListeners: Function,
   maxRecursion: Number
 };
 
 type.optionDefaults = {
+  onSetListeners: emptyFunction,
   maxRecursion: 0
 };
 
 type.createArguments(function(args) {
   if (args[0] instanceof Function) {
     args[0] = {
-      onEmit: args[0]
+      onNotify: args[0]
     };
   }
   return args;
@@ -46,45 +44,17 @@ type.defineProperties({
   },
   emit: {
     get: function() {
-      var self;
-      if (this._boundEmit) {
-        return this._boundEmit;
-      }
-      self = this;
-      return this._boundEmit = function() {
-        return self._emit.call(this, arguments, self);
-      };
+      return this._boundEmit || (this._boundEmit = this._bindEmit());
     }
   },
   emitArgs: {
     get: function() {
-      var self;
-      if (this._boundEmitArgs) {
-        return this._boundEmitArgs;
-      }
-      self = this;
-      return this._boundEmitArgs = function(args) {
-        return self._emit.call(this, args, self);
-      };
+      return this._boundEmitArgs || (this._boundEmitArgs = this._bindEmitArgs());
     }
   },
   listenable: {
     get: function() {
-      var self;
-      if (this._listenable) {
-        return this._listenable;
-      }
-      self = (function(_this) {
-        return function(options) {
-          return _this(options);
-        };
-      })(this);
-      self.once = (function(_this) {
-        return function(options) {
-          return _this.once(options);
-        };
-      })(this);
-      return this._listenable = self;
+      return this._listenable || (this._listenable = this._createListenable());
     }
   }
 });
@@ -102,52 +72,63 @@ type.defineValues({
   _listenable: null
 });
 
-if (isDev) {
-  type.defineValues({
-    _traceInit: function() {
-      return Tracer("Event()");
-    }
-  });
-}
+isDev && type.defineValues({
+  _traceInit: function() {
+    return Tracer("Event()");
+  }
+});
 
 type.initInstance(function(options) {
-  if (options.onEmit) {
-    return this(options.onEmit);
+  if (options.onNotify) {
+    return this._createListener(2e308, options.onNotify);
   }
 });
 
 type.bindMethods(["_detachListener"]);
 
 type.defineMethods({
-  once: function(onEmit) {
-    return this._attachListener(Listener({
-      onEmit: onEmit,
-      maxCalls: 1,
-      onStop: this._detachListener
-    }));
+  once: function(onNotify) {
+    return this._createListener(1, onNotify);
   },
-  many: function(maxCalls, onEmit) {
-    return this._attachListener(Listener({
-      onEmit: onEmit,
-      maxCalls: maxCalls,
-      onStop: this._detachListener
-    }));
+  many: function(maxCalls, onNotify) {
+    return this._createListener(maxCalls, onNotify);
   },
   reset: function() {
-    var i, len, listener, oldValue;
-    oldValue = this._listeners;
-    if (!oldValue) {
+    if (this._listenerCount === 0) {
       return;
     }
-    if (oldValue.constructor === Listener) {
-      oldValue._defuse();
-    } else {
-      for (i = 0, len = oldValue.length; i < len; i++) {
-        listener = oldValue[i];
-        listener._defuse();
-      }
-    }
     this._setListeners(null, 0);
+  },
+  _bindEmit: function() {
+    var event;
+    event = this;
+    return function() {
+      event._notifyListeners(this, arguments);
+    };
+  },
+  _bindEmitArgs: function() {
+    var event;
+    event = this;
+    return function(args) {
+      event._notifyListeners(this, args);
+    };
+  },
+  _createListenable: function() {
+    var event, self;
+    event = this;
+    self = function(onNotify) {
+      return event._createListener(2e308, onNotify);
+    };
+    self.once = function(onNotify) {
+      return event._createListener(1, onNotify);
+    };
+    return self;
+  },
+  _createListener: function(maxCalls, onNotify) {
+    var listener;
+    listener = Listener(maxCalls, onNotify, this._detachListener);
+    this._attachListener(listener);
+    return listener;
   },
   _attachListener: function(listener) {
     var oldValue;
@@ -161,15 +142,9 @@ type.defineMethods({
       this._setListeners(oldValue, oldValue.length);
     }
     this._didListen(listener);
-    return listener;
-  },
-  _emit: function(args, event) {
-    var context;
-    context = this === event ? null : this;
-    return event._notifyListeners(context, args);
   },
   _didListen: function(listener) {
-    return didListen.emit(listener, this);
+    didListen.emit(listener, this);
   },
   _notifyListeners: function(context, args) {
     var i, len, listener, oldValue, wasNotifying;
@@ -197,7 +172,7 @@ type.defineMethods({
       this._isNotifying = false;
       this._recursionCount = 0;
     }
-    return this._detachListeners(this._detachQueue);
+    this._detachListeners(this._detachQueue);
   },
   _detachListener: function(listener) {
     var index, newCount, oldValue;
@@ -236,18 +211,13 @@ type.defineMethods({
         this._detachListener(listener);
       }
     }
-    return listeners.length = 0;
+    listeners.length = 0;
   },
   _setListeners: function(newValue, newCount) {
     assert(newCount !== this._listenerCount);
-    if (newValue !== this._listeners) {
-      this._listeners = newValue;
-    }
+    this._listeners = newValue;
     this._listenerCount = newCount;
-    if (!this._onSetListeners) {
-      return;
-    }
-    return this._onSetListeners(newValue, newCount);
+    this._onSetListeners(newValue, newCount);
   }
 });
 

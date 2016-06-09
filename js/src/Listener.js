@@ -10,65 +10,79 @@ Tracer = require("tracer");
 
 Type = require("Type");
 
-type = Type("Listener");
-
-type.optionTypes = {
-  onEmit: Function,
-  onStop: Function,
-  maxCalls: Number
-};
-
-type.optionDefaults = {
-  onStop: emptyFunction,
-  maxCalls: 2e308
-};
+type = Type("EventListener");
 
 type.initArguments(function(args) {
   if (args[0] instanceof Function) {
-    return args[0] = {
-      onEmit: args[0]
-    };
+    args[1] = args[0];
+    return args[0] = void 0;
   }
 });
 
-type.defineFrozenValues({
-  maxCalls: getArgProp("maxCalls")
-});
+type.argumentTypes = {
+  maxCalls: Number,
+  onNotify: Function,
+  onDefuse: Function
+};
+
+type.argumentDefaults = {
+  maxCalls: 2e308,
+  onDefuse: emptyFunction
+};
 
 type.defineValues({
-  start: function() {
-    return emptyFunction;
-  },
-  stop: function() {
-    return this._stopImpl;
-  },
-  notify: function() {
-    return this._getNotifyImpl();
-  },
+  maxCalls: getArgProp(0),
   calls: function() {
     if (this.maxCalls !== 2e308) {
       return 0;
     }
   },
-  _defuse: function() {
-    return this._defuseImpl;
+  notify: function() {
+    return this._getNotifyImpl();
   },
-  _onEmit: getArgProp("onEmit"),
-  _onStop: getArgProp("onStop"),
-  _onDefuse: function() {
-    return emptyFunction;
+  _stopped: false,
+  _onNotify: getArgProp(1),
+  _onDefuse: getArgProp(2)
+});
+
+isDev && type.defineValues({
+  _traceInit: function() {
+    return Tracer("Listener()");
   }
 });
 
-if (isDev) {
-  type.defineValues({
-    _traceInit: function() {
-      return Tracer("Listener()");
+type.definePrototype({
+  isListening: {
+    get: function() {
+      return this._stopped === false;
     }
-  });
-}
+  }
+});
 
 type.defineMethods({
+  start: function() {
+    if (!this._stopped) {
+      return;
+    }
+    this._stopped = false;
+    this.notify = this._getNotifyImpl();
+  },
+  stop: function() {
+    if (this._stopped) {
+      return;
+    }
+    this._stopped = true;
+    this.notify = emptyFunction;
+  },
+  defuse: function() {
+    this._stopped = true;
+    this.start = emptyFunction;
+    this.notify = emptyFunction;
+    this.stop = emptyFunction;
+    this.defuse = emptyFunction;
+    this._onDefuse(this);
+    this._onDefuse = null;
+  },
   _getNotifyImpl: function() {
     if (this.maxCalls === 2e308) {
       return this._unlimitedImpl;
@@ -76,31 +90,14 @@ type.defineMethods({
     return this._limitedImpl;
   },
   _unlimitedImpl: function(context, args) {
-    this._onEmit.apply(context, args);
+    this._onNotify.apply(context, args);
   },
   _limitedImpl: function(context, args) {
     this.calls += 1;
-    this._onEmit.apply(context, args);
+    this._onNotify.apply(context, args);
     if (this.calls === this.maxCalls) {
-      this.stop();
+      this.defuse();
     }
-  },
-  _startImpl: function() {
-    this.start = emptyFunction;
-    this.notify = this._getNotifyImpl();
-    this.stop = this._stopImpl;
-    this._defuse = this._defuseImpl;
-  },
-  _stopImpl: function() {
-    this._defuse();
-    this._onStop(this);
-  },
-  _defuseImpl: function() {
-    this.start = this._startImpl;
-    this.notify = emptyFunction;
-    this.stop = emptyFunction;
-    this._defuse = emptyFunction;
-    this._onDefuse();
   }
 });
 

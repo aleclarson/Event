@@ -7,24 +7,22 @@ Tracer = require "tracer"
 assert = require "assert"
 Type = require "Type"
 
-type = Type "Event", (onEmit) ->
-  @_attachListener Listener {
-    onEmit
-    onStop: @_detachListener
-  }
+type = Type "Event", (onNotify) ->
+  @_createListener Infinity, onNotify
 
 type.optionTypes =
-  onEmit: Function.Maybe
-  onSetListeners: Function.Maybe
+  onNotify: Function.Maybe
+  onSetListeners: Function
   maxRecursion: Number
 
 type.optionDefaults =
+  onSetListeners: emptyFunction
   maxRecursion: 0
 
 type.createArguments (args) ->
 
   if args[0] instanceof Function
-    args[0] = { onEmit: args[0] }
+    args[0] = { onNotify: args[0] }
 
   return args
 
@@ -34,22 +32,13 @@ type.defineProperties
     @_listenerCount
 
   emit: get: ->
-    return @_boundEmit if @_boundEmit
-    self = this
-    return @_boundEmit = ->
-      self._emit.call this, arguments, self
+    @_boundEmit or @_boundEmit = @_bindEmit()
 
   emitArgs: get: ->
-    return @_boundEmitArgs if @_boundEmitArgs
-    self = this
-    return @_boundEmitArgs = (args) ->
-      self._emit.call this, args, self
+    @_boundEmitArgs or @_boundEmitArgs = @_bindEmitArgs()
 
   listenable: get: ->
-    return @_listenable if @_listenable
-    self = (options) => this options
-    self.once = (options) => @once options
-    return @_listenable = self
+    @_listenable or @_listenable = @_createListenable()
 
 type.defineValues
 
@@ -73,14 +62,14 @@ type.defineValues
 
   _listenable: null
 
-if isDev then type.defineValues
+isDev and type.defineValues
 
   _traceInit: -> Tracer "Event()"
 
 type.initInstance (options) ->
 
-  if options.onEmit
-    this options.onEmit
+  if options.onNotify
+    @_createListener Infinity, options.onNotify
 
 type.bindMethods [
   "_detachListener"
@@ -88,42 +77,45 @@ type.bindMethods [
 
 type.defineMethods
 
-  once: (onEmit) ->
-    @_attachListener Listener {
-      onEmit
-      maxCalls: 1
-      onStop: @_detachListener
-    }
+  once: (onNotify) ->
+    @_createListener 1, onNotify
 
-  many: (maxCalls, onEmit) ->
-    @_attachListener Listener {
-      onEmit
-      maxCalls
-      onStop: @_detachListener
-    }
+  many: (maxCalls, onNotify) ->
+    @_createListener maxCalls, onNotify
 
   reset: ->
-
-    oldValue = @_listeners
-
-    return unless oldValue
-
-    if oldValue.constructor is Listener
-      oldValue._defuse()
-
-    else
-      for listener in oldValue
-        listener._defuse()
-
+    return if @_listenerCount is 0
     @_setListeners null, 0
-
     return
+
+  _bindEmit: ->
+    event = this
+    return ->
+      event._notifyListeners this, arguments
+      return
+
+  _bindEmitArgs: ->
+    event = this
+    return (args) ->
+      event._notifyListeners this, args
+      return
+
+  _createListenable: ->
+    event = this
+    self = (onNotify) -> event._createListener Infinity, onNotify
+    self.once = (onNotify) -> event._createListener 1, onNotify
+    return self
+
+  _createListener: (maxCalls, onNotify) ->
+    listener = Listener maxCalls, onNotify, @_detachListener
+    @_attachListener listener
+    return listener
 
   _attachListener: (listener) ->
 
     oldValue = @_listeners
 
-    unless oldValue
+    if not oldValue
       @_setListeners listener, 1
 
     else if oldValue.constructor is Listener
@@ -134,21 +126,17 @@ type.defineMethods
       @_setListeners oldValue, oldValue.length
 
     @_didListen listener
-
-    return listener
-
-  _emit: (args, event) ->
-    context = if this is event then null else this
-    event._notifyListeners context, args
+    return
 
   _didListen: (listener) ->
     didListen.emit listener, this
+    return
 
   _notifyListeners: (context, args) ->
 
     oldValue = @_listeners
 
-    return unless oldValue
+    return if not oldValue
 
     if wasNotifying = @_isNotifying
       @_recursionCount += 1
@@ -164,11 +152,12 @@ type.defineMethods
     else
       listener.notify context, args for listener in oldValue
 
-    unless wasNotifying
+    if not wasNotifying
       @_isNotifying = no
       @_recursionCount = 0
 
     @_detachListeners @_detachQueue
+    return
 
   _detachListener: (listener) ->
 
@@ -202,18 +191,14 @@ type.defineMethods
     if count is 1 then @_detachListener listeners[0]
     else @_detachListener listener for listener in listeners
     listeners.length = 0
+    return
 
   _setListeners: (newValue, newCount) ->
-
     assert newCount isnt @_listenerCount
-
-    @_listeners = newValue if newValue isnt @_listeners
-
+    @_listeners = newValue
     @_listenerCount = newCount
-
-    return unless @_onSetListeners
-
     @_onSetListeners newValue, newCount
+    return
 
 type.defineStatics
 
