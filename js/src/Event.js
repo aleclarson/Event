@@ -1,7 +1,5 @@
 var Event, Tracer, Type, frozen, type;
 
-require("isDev");
-
 frozen = require("Property").frozen;
 
 Tracer = require("tracer");
@@ -16,6 +14,8 @@ type.argumentTypes = {
   onNotify: Function.Maybe
 };
 
+type.trace();
+
 type.defineFrozenValues({
   emit: function() {
     var listeners;
@@ -24,12 +24,6 @@ type.defineFrozenValues({
     return function() {
       return listeners.notify(this, arguments);
     };
-  }
-});
-
-isDev && type.defineValues({
-  _trace: function() {
-    return Tracer("Event()");
   }
 });
 
@@ -92,7 +86,9 @@ type.defineStatics({
     lazy: function() {
       var event;
       event = Event();
-      frozen.define(event, "_onAttach", require("emptyFunction"));
+      frozen.define(event, "_onAttach", function(listener) {
+        this._listeners.attach(listener);
+      });
       return event;
     }
   }

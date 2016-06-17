@@ -1,10 +1,12 @@
-var Listener, Type, assert, assertType, emptyFunction, getArgProp, type;
+var Listener, Type, assert, assertType, emptyFunction, getArgProp, immediate, type;
 
 emptyFunction = require("emptyFunction");
 
 assertType = require("assertType");
 
 getArgProp = require("getArgProp");
+
+immediate = require("immediate");
 
 assert = require("assert");
 
@@ -26,6 +28,9 @@ type.defineValues({
   _length: 0,
   _onUpdate: getArgProp("onUpdate"),
   _isNotifying: false,
+  _queue: function() {
+    return [];
+  },
   _detached: function() {
     return [];
   }
@@ -49,11 +54,14 @@ type.defineMethods({
   },
   notify: function(context, args) {
     var i, len, listener, oldValue;
+    if (this._isNotifying || this._queue.length) {
+      this._queue.push([context, args]);
+      return;
+    }
     oldValue = this._value;
     if (!oldValue) {
       return;
     }
-    assert(!this._isNotifying, "ListenerArray is already notifying!");
     this._isNotifying = true;
     if (oldValue.constructor === Listener) {
       oldValue.notify(context, args);
@@ -65,6 +73,11 @@ type.defineMethods({
     }
     this._isNotifying = false;
     this._flush();
+    immediate((function(_this) {
+      return function() {
+        return _this._next();
+      };
+    })(this));
   },
   detach: function(listener) {
     var index, newCount, oldValue;
@@ -115,6 +128,15 @@ type.defineMethods({
       this.detach(listeners[index]);
     }
     listeners.length = 0;
+  },
+  _next: function() {
+    var args, context, queue, ref;
+    queue = this._queue;
+    if (!queue.length) {
+      return;
+    }
+    ref = queue.shift(), context = ref[0], args = ref[1];
+    this.notify(context, args);
   }
 });
 

@@ -1,7 +1,5 @@
 var Listener, Tracer, Type, emptyFunction, getArgProp, getProto, impls, type;
 
-require("isDev");
-
 emptyFunction = require("emptyFunction");
 
 getArgProp = require("getArgProp");
@@ -30,6 +28,8 @@ type.argumentDefaults = {
   maxCalls: 2e308
 };
 
+type.trace();
+
 type.defineValues({
   calls: function(maxCalls) {
     if (maxCalls !== 2e308) {
@@ -45,12 +45,6 @@ type.defineValues({
     return emptyFunction;
   },
   _onNotify: getArgProp(1)
-});
-
-isDev && type.defineValues({
-  _traceInit: function() {
-    return Tracer("Listener()");
-  }
 });
 
 type.definePrototype({

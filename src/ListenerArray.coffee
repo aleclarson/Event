@@ -2,6 +2,7 @@
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
 getArgProp = require "getArgProp"
+immediate = require "immediate"
 assert = require "assert"
 Type = require "Type"
 
@@ -24,6 +25,8 @@ type.defineValues
   _onUpdate: getArgProp "onUpdate"
 
   _isNotifying: no
+
+  _queue: -> []
 
   _detached: -> []
 
@@ -51,10 +54,13 @@ type.defineMethods
 
   notify: (context, args) ->
 
+    if @_isNotifying or @_queue.length
+      @_queue.push [ context, args ]
+      return
+
     oldValue = @_value
     return if not oldValue
 
-    assert not @_isNotifying, "ListenerArray is already notifying!"
     @_isNotifying = yes
 
     if oldValue.constructor is Listener
@@ -64,7 +70,12 @@ type.defineMethods
         listener.notify context, args
 
     @_isNotifying = no
+
+    # Detach any dead listeners immediately after notify ends.
     @_flush()
+
+    # Consume the next queued event, but wait for the event loop to empty.
+    immediate => @_next()
     return
 
   detach: (listener) ->
@@ -117,6 +128,13 @@ type.defineMethods
     index = -1
     @detach listeners[index] while ++index < length
     listeners.length = 0
+    return
+
+  _next: ->
+    queue = @_queue
+    return if not queue.length
+    [ context, args ] = queue.shift()
+    @notify context, args
     return
 
 module.exports = type.build()

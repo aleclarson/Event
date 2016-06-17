@@ -19,7 +19,8 @@
   },
   "lotus": {
     "plugins": [
-      "lotus-coffee"
+      "lotus-coffee",
+      "lotus-runner"
     ]
   }
 }

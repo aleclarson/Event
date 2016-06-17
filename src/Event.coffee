@@ -1,6 +1,4 @@
 
-require "isDev"
-
 { frozen } = require "Property"
 
 Tracer = require "tracer"
@@ -12,6 +10,8 @@ type = Type "Event", (maxCalls, onNotify) ->
 type.argumentTypes =
   onNotify: Function.Maybe
 
+type.trace()
+
 type.defineFrozenValues
 
   emit: ->
@@ -19,11 +19,8 @@ type.defineFrozenValues
     frozen.define this, "_listeners", listeners
     return -> listeners.notify this, arguments
 
-isDev and type.defineValues
-  _trace: -> Tracer "Event()"
-
 type.initInstance (onNotify) ->
-  onNotify and Event.Listener(onNotify).attach(this)
+  onNotify and Event.Listener(onNotify).attach(this) # TODO: Does this need memory management?
 
 type.definePrototype
 
@@ -69,8 +66,13 @@ type.defineStatics
     require "./ListenerArray"
 
   didAttach: lazy: ->
+
     event = Event()
-    frozen.define event, "_onAttach", require "emptyFunction"
+
+    frozen.define event, "_onAttach", (listener) ->
+      @_listeners.attach listener
+      return
+
     return event
 
 module.exports = Event = type.build()

@@ -1,6 +1,4 @@
 
-require "isDev"
-
 emptyFunction = require "emptyFunction"
 getArgProp = require "getArgProp"
 getProto = require "getProto"
@@ -21,6 +19,8 @@ type.argumentTypes =
 type.argumentDefaults =
   maxCalls: Infinity
 
+type.trace()
+
 type.defineValues
 
   calls: (maxCalls) -> 0 if maxCalls isnt Infinity
@@ -34,10 +34,6 @@ type.defineValues
   _notify: -> emptyFunction
 
   _onNotify: getArgProp 1
-
-isDev and type.defineValues
-
-  _traceInit: -> Tracer "Listener()"
 
 type.definePrototype
 

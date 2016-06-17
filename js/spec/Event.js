@@ -11,32 +11,30 @@ describe("event(callback)", function() {
     listener = event(emptyFunction);
     return expect(getType(listener)).toBe(Event.Listener);
   });
-  return it("lazily converts to array storage", function() {
-    var event, listener;
+  it("lazily converts to array storage", function() {
+    var bar, event, foo;
     event = Event();
-    listener = event(emptyFunction);
-    expect(getType(event._listeners)).toBe(Event.Listener);
-    listener = event(emptyFunction);
-    return expect(getType(event._listeners)).toBe(Array);
+    foo = event(emptyFunction);
+    foo.start();
+    expect(event._listeners._value).toBe(foo);
+    bar = event(emptyFunction);
+    bar.start();
+    return expect(event._listeners._value).toEqual([foo, bar]);
   });
-});
-
-describe("event.once(callback)", function() {
-  return it("only calls the Listener once", function() {
+  it("supports stopping the Listener after one emit", function() {
     var event, listener;
     event = Event();
-    listener = event.once(emptyFunction);
+    listener = event(1, emptyFunction);
+    listener.start();
     event.emit();
     event.emit();
     return expect(listener.calls).toBe(1);
   });
-});
-
-describe("event.many(limit, callback)", function() {
-  return it("calls the Listener the correct number of times", function() {
+  return it("supports stopping the Listener after X emits", function() {
     var event, listener;
     event = Event();
-    listener = event.many(2, emptyFunction);
+    listener = event(2, emptyFunction);
+    listener.start();
     event.emit();
     event.emit();
     event.emit();
@@ -46,18 +44,21 @@ describe("event.many(limit, callback)", function() {
 
 describe("event.emit(args...)", function() {
   it("notifies every attached Listener", function() {
-    var event, spy;
-    spy = jasmine.createSpy();
+    var bar, event, foo;
     event = Event();
-    event(spy);
-    event(spy);
+    foo = event(1, emptyFunction);
+    foo.start();
+    bar = event(1, emptyFunction);
+    bar.start();
     event.emit();
-    return expect(spy.calls.count()).toBe(2);
+    expect(foo.calls).toBe(1);
+    return expect(bar.calls).toBe(1);
   });
   it("works with just one Listener", function() {
     var event, listener;
     event = Event();
-    listener = event.many(2, emptyFunction);
+    listener = event(2, emptyFunction);
+    listener.start();
     event.emit();
     return expect(listener.calls).toBe(1);
   });
@@ -71,73 +72,40 @@ describe("event.emit(args...)", function() {
   it("detaches finished Listeners", function() {
     var bar, event, foo;
     event = Event();
-    foo = event.many(2, emptyFunction);
-    bar = event.once(emptyFunction);
-    expect(event._listeners.length).toBe(2);
+    foo = event(2, emptyFunction);
+    foo.start();
+    bar = event(1, emptyFunction);
+    bar.start();
+    expect(event.listenerCount).toBe(2);
     event.emit();
-    expect(event._listeners).toBe(foo);
+    expect(event._listeners._value).toBe(foo);
     event.emit();
-    return expect(event._listeners).toBe(null);
+    return expect(event._listeners._value).toBe(null);
   });
   it("is bound to the Event", function() {
     var emit, event, listener;
     event = Event();
-    listener = event.many(2, emptyFunction);
+    listener = event(2, emptyFunction);
+    listener.start();
     emit = event.emit;
     emit();
     return expect(listener.calls).toBe(1);
   });
-  it("can defuse a listener during an emit", function() {
-    var bar, event, foo, spy, zen;
-    spy = jasmine.createSpy();
-    event = Event();
-    foo = event(function() {
-      spy(0);
-      return bar.defuse();
-    });
-    bar = event(function() {
-      return spy(1);
-    });
-    zen = event(function() {
-      return spy(2);
-    });
-    event.emit();
-    expect(spy.calls.count()).toBe(2);
-    expect(spy.calls.argsFor(0)).toContain(0);
-    return expect(spy.calls.argsFor(1)).toContain(2);
-  });
-  it("detaches a listener that defuses itself", function() {
-    var event, foo;
-    event = Event();
-    foo = event(function() {
-      foo.defuse();
-      return expect(event.listenerCount).toBe(1);
-    });
-    event.emit();
-    return expect(event.listenerCount).toBe(0);
-  });
-  it("detaches a listener that is defused by an earlier listener", function() {
-    var bar, event, foo, spy;
-    event = Event();
-    foo = event(function() {
-      bar.defuse();
-      return expect(event.listenerCount).toBe(2);
-    });
-    bar = event(spy = jasmine.createSpy());
-    event.emit();
-    expect(event.listenerCount).toBe(1);
-    return expect(spy.calls.count()).toBe(0);
-  });
-  it("detaches a listener that is defused by a later listener", function() {
+  it("while notifying, any detached Listeners are cleaned up", function() {
     var bar, event, foo;
     event = Event();
-    foo = event(emptyFunction);
-    bar = event(function() {
-      foo.defuse();
+    foo = event(1, function() {
+      foo.detach();
+      bar.detach();
       return expect(event.listenerCount).toBe(2);
     });
+    bar = event(1, emptyFunction);
+    foo.start();
+    bar.start();
     event.emit();
-    return expect(event.listenerCount).toBe(1);
+    expect(event.listenerCount).toBe(0);
+    expect(foo.calls).toBe(1);
+    return expect(bar.calls).toBe(0);
   });
   return bench(function() {
     var event, i, j;
@@ -148,6 +116,19 @@ describe("event.emit(args...)", function() {
     return this.add(".emit()", function() {
       return event.emit();
     });
+  });
+});
+
+describe("Event.didAttach", function() {
+  return it("does not call emit on itself when a Listener is attached", function() {
+    var event, foo, spy;
+    event = Event.didAttach;
+    spy = jasmine.createSpy();
+    foo = event(5, emptyFunction);
+    foo.start();
+    event(emptyFunction);
+    expect(foo.calls).toBe(0);
+    return expect(event.listenerCount).toBe(2);
   });
 });
 
