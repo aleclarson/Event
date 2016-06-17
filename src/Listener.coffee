@@ -3,10 +3,11 @@ require "isDev"
 
 emptyFunction = require "emptyFunction"
 getArgProp = require "getArgProp"
+getProto = require "getProto"
 Tracer = require "tracer"
 Type = require "Type"
 
-type = Type "EventListener"
+type = Type "Listener"
 
 type.initArguments (args) ->
   if args[0] instanceof Function
@@ -16,25 +17,23 @@ type.initArguments (args) ->
 type.argumentTypes =
   maxCalls: Number
   onNotify: Function
-  onDefuse: Function
 
 type.argumentDefaults =
   maxCalls: Infinity
-  onDefuse: emptyFunction
 
 type.defineValues
 
+  calls: (maxCalls) -> 0 if maxCalls isnt Infinity
+
   maxCalls: getArgProp 0
 
-  calls: -> 0 if @maxCalls isnt Infinity
+  _event: null
 
-  notify: -> @_getNotifyImpl()
+  _impl: -> impls.detached
 
-  _stopped: no
+  _notify: -> emptyFunction
 
   _onNotify: getArgProp 1
-
-  _onDefuse: getArgProp 2
 
 isDev and type.defineValues
 
@@ -43,44 +42,78 @@ isDev and type.defineValues
 type.definePrototype
 
   isListening: get: ->
-    @_stopped is no
+    @_notify isnt emptyFunction
+
+  notify: get: ->
+    @_notify
 
 type.defineMethods
 
+  attach: (event) ->
+    @_impl.attach.call this, event
+
+  detach: ->
+    @_impl.detach.call this
+
   start: ->
-    return if not @_stopped
-    @_stopped = no
-    @notify = @_getNotifyImpl()
-    return
+    @_impl.start.call this
 
   stop: ->
-    return if @_stopped
-    @_stopped = yes
-    @notify = emptyFunction
+    @_impl.stop.call this
+
+  _attach: (event) ->
+    @_impl = impls.stopped
+    @_event = event
+    @_event._onAttach this
+    return this
+
+  _detach: ->
+    @_impl = impls.detached
+    @_notify = emptyFunction
+    @_event._onDetach this
+    @_event = null
     return
 
-  defuse: ->
-    @_stopped = yes
-    @start = emptyFunction
-    @notify = emptyFunction
-    @stop = emptyFunction
-    @defuse = emptyFunction
-    @_onDefuse this
-    @_onDefuse = null
+  _start: ->
+    @_impl = impls.started
+    @_notify =
+      if @maxCalls is Infinity then @_notifyUnlimited
+      else @_notifyLimited
+    return this
+
+  _stop: ->
+    @_impl = impls.stopped
+    @_notify = emptyFunction
     return
 
-  _getNotifyImpl: ->
-    return @_unlimitedImpl if @maxCalls is Infinity
-    return @_limitedImpl
-
-  _unlimitedImpl: (context, args) ->
+  _notifyUnlimited: (context, args) ->
     @_onNotify.apply context, args
     return
 
-  _limitedImpl: (context, args) ->
+  _notifyLimited: (context, args) ->
     @calls += 1
     @_onNotify.apply context, args
-    @defuse() if @calls is @maxCalls
+    @detach() if @calls is @maxCalls
     return
 
-module.exports = type.build()
+module.exports = Listener = type.build()
+
+impls =
+
+  detached:
+    attach: Listener::_attach
+    detach: emptyFunction
+    start: emptyFunction
+    stop: emptyFunction
+
+  stopped:
+    attach: emptyFunction.thatReturnsThis
+    detach: Listener::_detach
+    start: Listener::_start
+    stop: emptyFunction
+
+  started:
+    attach: emptyFunction.thatReturnsThis
+    detach: Listener::_detach
+    start: emptyFunction
+    stop: Listener::_stop

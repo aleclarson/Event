@@ -1,5 +1,5 @@
 
-# event v2.0.0 ![stable](https://img.shields.io/badge/stability-stable-4EBA0F.svg?style=flat)
+# Event v2.0.0 ![stable](https://img.shields.io/badge/stability-stable-4EBA0F.svg?style=flat)
 
 Provides the `Event` and `Event.Listener` classes.
 

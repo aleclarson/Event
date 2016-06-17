@@ -1,4 +1,4 @@
-var Tracer, Type, emptyFunction, getArgProp, type;
+var Listener, Tracer, Type, emptyFunction, getArgProp, getProto, impls, type;
 
 require("isDev");
 
@@ -6,11 +6,13 @@ emptyFunction = require("emptyFunction");
 
 getArgProp = require("getArgProp");
 
+getProto = require("getProto");
+
 Tracer = require("tracer");
 
 Type = require("Type");
 
-type = Type("EventListener");
+type = Type("Listener");
 
 type.initArguments(function(args) {
   if (args[0] instanceof Function) {
@@ -21,28 +23,28 @@ type.initArguments(function(args) {
 
 type.argumentTypes = {
   maxCalls: Number,
-  onNotify: Function,
-  onDefuse: Function
+  onNotify: Function
 };
 
 type.argumentDefaults = {
-  maxCalls: 2e308,
-  onDefuse: emptyFunction
+  maxCalls: 2e308
 };
 
 type.defineValues({
-  maxCalls: getArgProp(0),
-  calls: function() {
-    if (this.maxCalls !== 2e308) {
+  calls: function(maxCalls) {
+    if (maxCalls !== 2e308) {
       return 0;
     }
   },
-  notify: function() {
-    return this._getNotifyImpl();
+  maxCalls: getArgProp(0),
+  _event: null,
+  _impl: function() {
+    return impls.detached;
   },
-  _stopped: false,
-  _onNotify: getArgProp(1),
-  _onDefuse: getArgProp(2)
+  _notify: function() {
+    return emptyFunction;
+  },
+  _onNotify: getArgProp(1)
 });
 
 isDev && type.defineValues({
@@ -54,53 +56,83 @@ isDev && type.defineValues({
 type.definePrototype({
   isListening: {
     get: function() {
-      return this._stopped === false;
+      return this._notify !== emptyFunction;
+    }
+  },
+  notify: {
+    get: function() {
+      return this._notify;
     }
   }
 });
 
 type.defineMethods({
+  attach: function(event) {
+    return this._impl.attach.call(this, event);
+  },
+  detach: function() {
+    return this._impl.detach.call(this);
+  },
   start: function() {
-    if (!this._stopped) {
-      return;
-    }
-    this._stopped = false;
-    this.notify = this._getNotifyImpl();
+    return this._impl.start.call(this);
   },
   stop: function() {
-    if (this._stopped) {
-      return;
-    }
-    this._stopped = true;
-    this.notify = emptyFunction;
+    return this._impl.stop.call(this);
   },
-  defuse: function() {
-    this._stopped = true;
-    this.start = emptyFunction;
-    this.notify = emptyFunction;
-    this.stop = emptyFunction;
-    this.defuse = emptyFunction;
-    this._onDefuse(this);
-    this._onDefuse = null;
+  _attach: function(event) {
+    this._impl = impls.stopped;
+    this._event = event;
+    this._event._onAttach(this);
+    return this;
   },
-  _getNotifyImpl: function() {
-    if (this.maxCalls === 2e308) {
-      return this._unlimitedImpl;
-    }
-    return this._limitedImpl;
+  _detach: function() {
+    this._impl = impls.detached;
+    this._notify = emptyFunction;
+    this._event._onDetach(this);
+    this._event = null;
   },
-  _unlimitedImpl: function(context, args) {
+  _start: function() {
+    this._impl = impls.started;
+    this._notify = this.maxCalls === 2e308 ? this._notifyUnlimited : this._notifyLimited;
+    return this;
+  },
+  _stop: function() {
+    this._impl = impls.stopped;
+    this._notify = emptyFunction;
+  },
+  _notifyUnlimited: function(context, args) {
     this._onNotify.apply(context, args);
   },
-  _limitedImpl: function(context, args) {
+  _notifyLimited: function(context, args) {
     this.calls += 1;
     this._onNotify.apply(context, args);
     if (this.calls === this.maxCalls) {
-      this.defuse();
+      this.detach();
     }
   }
 });
 
-module.exports = type.build();
+module.exports = Listener = type.build();
+
+impls = {
+  detached: {
+    attach: Listener.prototype._attach,
+    detach: emptyFunction,
+    start: emptyFunction,
+    stop: emptyFunction
+  },
+  stopped: {
+    attach: emptyFunction.thatReturnsThis,
+    detach: Listener.prototype._detach,
+    start: Listener.prototype._start,
+    stop: emptyFunction
+  },
+  started: {
+    attach: emptyFunction.thatReturnsThis,
+    detach: Listener.prototype._detach,
+    start: emptyFunction,
+    stop: Listener.prototype._stop
+  }
+};
 
 //# sourceMappingURL=../../map/src/Listener.map
