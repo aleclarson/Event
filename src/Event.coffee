@@ -5,7 +5,8 @@ Tracer = require "tracer"
 Type = require "Type"
 
 type = Type "Event", (maxCalls, onNotify) ->
-  Event.Listener(maxCalls, onNotify).attach(this)
+  Event.Listener maxCalls, onNotify
+    .attach this
 
 type.argumentTypes =
   onNotify: Function.Maybe
@@ -19,8 +20,13 @@ type.defineFrozenValues
     frozen.define this, "_listeners", listeners
     return -> listeners.notify this, arguments
 
+# If a callback was passed, create a Listener
+# that listens until this Event is GC'd.
 type.initInstance (onNotify) ->
-  onNotify and Event.Listener(onNotify).attach(this) # TODO: Does this need memory management?
+  return if not onNotify
+  Event.Listener onNotify
+    .attach this
+    .start()
 
 type.definePrototype
 
@@ -49,7 +55,8 @@ type.defineMethods
 
     event = this
     listenable = (maxCalls, onNotify) ->
-      Event.Listener(maxCalls, onNotify).attach(event)
+      Event.Listener maxCalls, onNotify
+        .attach event
 
     frozen.define event, "_listenable", listenable
     return listenable

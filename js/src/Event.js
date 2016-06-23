@@ -28,7 +28,10 @@ type.defineFrozenValues({
 });
 
 type.initInstance(function(onNotify) {
-  return onNotify && Event.Listener(onNotify).attach(this);
+  if (!onNotify) {
+    return;
+  }
+  return Event.Listener(onNotify).attach(this).start();
 });
 
 type.definePrototype({
