@@ -93,4 +93,4 @@ isDev && type.defineMethods({
 
 module.exports = type.build();
 
-//# sourceMappingURL=../../map/src/EventMap.map
+//# sourceMappingURL=map/EventMap.map

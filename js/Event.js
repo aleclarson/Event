@@ -99,4 +99,4 @@ type.defineStatics({
 
 module.exports = Event = type.build();
 
-//# sourceMappingURL=../../map/src/Event.map
+//# sourceMappingURL=map/Event.map
