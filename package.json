@@ -10,7 +10,7 @@
     "emptyFunction": "aleclarson/emptyFunction#1.0.0",
     "fromArgs": "aleclarson/fromArgs#1.0.0",
     "getProto": "aleclarson/getProto#1.0.0",
-    "immediate": "aleclarson/immediate#4.0.0",
+    "immediate": "aleclarson/immediate#4.1.0",
     "isDev": "aleclarson/isDev#1.0.0",
     "steal": "aleclarson/steal#1.0.0",
     "tracer": "aleclarson/tracer#1.0.0"
