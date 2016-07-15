@@ -1,171 +1,189 @@
 
+getType = require "getType"
+
 Event = require "../src/Event"
 
-describe "Event", ->
+describe "event(callback)", ->
 
-  describe ".call()", ->
+  it "returns a Listener", ->
 
-    it "returns a Listener", ->
-      event = Event()
-      listener = event emptyFunction
-      expect(getType listener).toBe Event.Listener
+    event = Event()
+    listener = event emptyFunction
 
-    it "lazily converts to array storage", ->
-      event = Event()
-      listener = event emptyFunction
-      expect(getType event._listeners).toBe Event.Listener
-      listener = event emptyFunction
-      expect(getType event._listeners).toBe Array
+    expect getType listener
+      .toBe Event.Listener
 
-  describe ".once()", ->
+  it "lazily converts to array storage", ->
 
-    it "only calls the Listener once", ->
-      event = Event()
-      listener = event.once emptyFunction
-      event.emit()
-      event.emit()
-      expect(listener.calls).toBe 1
+    event = Event()
 
-  describe ".many()", ->
+    foo = event emptyFunction
+    foo.start()
 
-    it "calls the Listener the correct number of times", ->
-      event = Event()
-      listener = event.many 2, emptyFunction
-      event.emit()
-      event.emit()
-      event.emit()
-      expect(listener.calls).toBe 2
+    expect event._listeners._value
+      .toBe foo
 
-  describe ".emit()", ->
+    bar = event emptyFunction
+    bar.start()
 
-    it "notifies every attached Listener", ->
-      spy = jasmine.createSpy()
-      event = Event()
-      event spy
-      event spy
-      event.emit()
-      expect(spy.calls.count()).toBe 2
+    expect event._listeners._value
+      .toEqual [ foo, bar ]
 
-    it "works with just one Listener", ->
-      event = Event()
-      listener = event emptyFunction
-      event.emit()
-      expect(listener.calls).toBe 1
+  it "supports stopping the Listener after one emit", ->
 
-    it "works with no listeners", ->
-      event = Event()
-      expect -> event.emit()
+    event = Event()
+
+    listener = event 1, emptyFunction
+    listener.start()
+
+    event.emit()
+    event.emit()
+
+    expect listener.calls
+      .toBe 1
+
+  it "supports stopping the Listener after X emits", ->
+
+    event = Event()
+
+    listener = event 2, emptyFunction
+    listener.start()
+
+    event.emit()
+    event.emit()
+    event.emit()
+
+    expect listener.calls
+      .toBe 2
+
+describe "event.emit(args...)", ->
+
+  it "notifies every attached Listener", ->
+
+    event = Event()
+
+    foo = event 1, emptyFunction
+    foo.start()
+
+    bar = event 1, emptyFunction
+    bar.start()
+
+    event.emit()
+
+    expect foo.calls
+      .toBe 1
+
+    expect bar.calls
+      .toBe 1
+
+  it "works with just one Listener", ->
+
+    event = Event()
+
+    listener = event 2, emptyFunction
+    listener.start()
+
+    event.emit()
+
+    expect listener.calls
+      .toBe 1
+
+  it "works with no listeners", ->
+
+    event = Event()
+
+    expect -> event.emit()
       .not.toThrow()
 
-    it "detaches finished Listeners", ->
-      event = Event()
-      foo = event.many 2, emptyFunction
-      bar = event.once emptyFunction
-      expect(event._listeners.length).toBe 2
-      event.emit()
-      expect(event._listeners).toBe foo
-      event.emit()
-      expect(event._listeners).toBe null
+  it "detaches finished Listeners", ->
 
-    it "is bound to the Event", ->
-      event = Event()
-      listener = event emptyFunction
-      emit = event.emit
-      emit()
-      expect(listener.calls).toBe 1
+    event = Event()
 
-    it "can stop a listener during an emit", ->
+    foo = event 2, emptyFunction
+    foo.start()
 
-      spy = jasmine.createSpy()
+    bar = event 1, emptyFunction
+    bar.start()
 
-      event = Event()
+    expect event.listenerCount
+      .toBe 2
 
-      foo = event ->
-        spy 0
-        bar.stop()
+    event.emit()
 
-      bar = event ->
-        spy 1
+    expect event._listeners._value
+      .toBe foo
 
-      zen = event ->
-        spy 2
+    event.emit()
 
-      event.emit()
+    expect event._listeners._value
+      .toBe null
 
-      expect spy.calls.count()
+  it "is bound to the Event", ->
+
+    event = Event()
+
+    listener = event 2, emptyFunction
+    listener.start()
+
+    emit = event.emit
+    emit()
+
+    expect listener.calls
+      .toBe 1
+
+  it "while notifying, any detached Listeners are cleaned up", ->
+
+    event = Event()
+
+    foo = event 1, ->
+
+      foo.detach()
+      bar.detach()
+
+      # Before cleaning up, wait until finished notifying.
+      expect event.listenerCount
         .toBe 2
 
-      expect spy.calls.argsFor 0
-        .toContain 0
+    bar = event 1, emptyFunction
 
-      expect spy.calls.argsFor 1
-        .toContain 2
+    foo.start()
+    bar.start()
 
-    it "detaches a listener that stops itself", ->
+    event.emit()
 
-      event = Event()
+    expect event.listenerCount
+      .toBe 0
 
-      foo = event ->
+    expect foo.calls
+      .toBe 1
 
-        foo.stop()
+    expect bar.calls
+      .toBe 0
 
-        # Wait until the emit finishes before detaching dead listeners.
-        expect event.listenerCount
-          .toBe 1
+  bench ->
 
+    event = Event()
+
+    for i in [ 0 .. 5 ]
+      event emptyFunction
+
+    @add ".emit()", ->
       event.emit()
 
-      expect event.listenerCount
-        .toBe 0
+describe "Event.didAttach", ->
 
-    it "detaches a listener that is stopped by an earlier listener", ->
+  it "does not call emit on itself when a Listener is attached", ->
 
-      event = Event()
+    event = Event.didAttach
+    spy = jasmine.createSpy()
 
-      foo = event ->
+    foo = event 5, emptyFunction
+    foo.start()
 
-        bar.stop()
+    event emptyFunction
 
-        # Wait until the emit finishes before detaching dead listeners.
-        expect event.listenerCount
-          .toBe 2
+    expect foo.calls
+      .toBe 0
 
-      # This should never be called.
-      bar = event spy = jasmine.createSpy()
-
-      event.emit()
-
-      expect event.listenerCount
-        .toBe 1
-
-      expect spy.calls.count()
-        .toBe 0
-
-    it "detaches a listener that is stopped by a later listener", ->
-
-      event = Event()
-
-      foo = event emptyFunction
-
-      bar = event ->
-
-        foo.stop()
-
-        # Wait until the emit finishes before detaching dead listeners.
-        expect event.listenerCount
-          .toBe 2
-
-      event.emit()
-
-      expect event.listenerCount
-        .toBe 1
-
-    bench ->
-
-      event = Event()
-
-      for i in [ 0 .. 5 ]
-        event emptyFunction
-
-      @add ".emit()", ->
-        event.emit()
+    expect event.listenerCount
+      .toBe 2

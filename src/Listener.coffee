@@ -1,77 +1,115 @@
 
-require "isDev"
-
-{ isType } = require "type-utils"
-
 emptyFunction = require "emptyFunction"
-Factory = require "factory"
-define = require "define"
+fromArgs = require "fromArgs"
+getProto = require "getProto"
 Tracer = require "tracer"
-guard = require "guard"
+Type = require "Type"
 
-module.exports =
-Listener = Factory "Listener",
+type = Type "Listener"
 
-  optionTypes:
-    onEvent: Function
-    onStop: Function
-    maxCalls: Number
+type.initArguments (args) ->
+  if args[0] instanceof Function
+    args[1] = args[0]
+    args[0] = undefined
 
-  optionDefaults:
-    onStop: emptyFunction
-    maxCalls: Infinity
+type.argumentTypes =
+  maxCalls: Number
+  onNotify: Function
 
-  initArguments: (options) ->
-    options = { onEvent: options } if isType options, Function
-    [ options ]
+type.argumentDefaults =
+  maxCalls: Infinity
 
-  customValues:
+type.trace()
 
-    calls: get: ->
-      @_calls
+type.defineValues
 
-  initFrozenValues: (options) ->
+  calls: (maxCalls) -> 0 if maxCalls isnt Infinity
 
-    maxCalls: options.maxCalls
+  maxCalls: fromArgs 0
 
-    _onEvent: options.onEvent
+  _event: null
 
-    _onStop: options.onStop
+  _impl: -> impls.detached
 
-  initValues: (options) ->
+  _notify: -> emptyFunction
 
-    _onDefuse: emptyFunction
+  _onNotify: fromArgs 1
 
-    _traceInit: Tracer "Listener()" if isDev
+type.definePrototype
 
-  init: ->
+  isListening: get: ->
+    @_notify isnt emptyFunction
 
-    if @maxCalls is Infinity
-      @notify = @_notifyUnlimited
+  notify: get: ->
+    @_notify
 
-    else
-      define this, "_calls", 0
-      @notify = @_notifyLimited
+type.defineMethods
+
+  attach: (event) ->
+    @_impl.attach.call this, event
+
+  detach: ->
+    @_impl.detach.call this
+
+  start: ->
+    @_impl.start.call this
 
   stop: ->
-    @_defuse()
-    @_onStop this
+    @_impl.stop.call this
+
+  _attach: (event) ->
+    @_impl = impls.stopped
+    @_event = event
+    @_event._onAttach this
+    return this
+
+  _detach: ->
+    @_impl = impls.detached
+    @_notify = emptyFunction
+    @_event._onDetach this
+    @_event = null
     return
 
-  _notifyUnlimited: (scope, args) ->
-    guard => @_onEvent.apply scope, args
-    .fail (error) => throwFailure error, { scope, args, listener: this }
+  _start: ->
+    @_impl = impls.started
+    @_notify =
+      if @maxCalls is Infinity then @_notifyUnlimited
+      else @_notifyLimited
+    return this
+
+  _stop: ->
+    @_impl = impls.stopped
+    @_notify = emptyFunction
     return
 
-  _notifyLimited: (scope, args) ->
-    @_calls += 1
-    guard => @_onEvent.apply scope, args
-    .fail (error) => throwFailure error, { scope, args, listener: this }
-    @stop() if @_calls is @maxCalls
+  _notifyUnlimited: (context, args) ->
+    @_onNotify.apply context, args
     return
 
-  _defuse: ->
-    @notify = emptyFunction.thatReturnsFalse
-    @_defuse = @stop = emptyFunction
-    @_onDefuse()
+  _notifyLimited: (context, args) ->
+    @calls += 1
+    @_onNotify.apply context, args
+    @detach() if @calls is @maxCalls
     return
+
+module.exports = Listener = type.build()
+
+impls =
+
+  detached:
+    attach: Listener::_attach
+    detach: emptyFunction
+    start: emptyFunction
+    stop: emptyFunction
+
+  stopped:
+    attach: emptyFunction.thatReturnsThis
+    detach: Listener::_detach
+    start: Listener::_start
+    stop: emptyFunction
+
+  started:
+    attach: emptyFunction.thatReturnsThis
+    detach: Listener::_detach
+    start: emptyFunction
+    stop: Listener::_stop

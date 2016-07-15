@@ -1,44 +1,113 @@
 
 Event = require "../src/Event"
 
-describe "Listener", ->
+describe "listener.notify()", ->
 
-  describe ".notify()", ->
+  it "calls the `_onNotify` property", ->
 
-    it "calls the '_onEvent' property", ->
-      event = Event()
-      listener = event jasmine.createSpy()
-      listener.notify()
-      expect(listener._onEvent.calls.count()).toBe 1
+    event = Event()
 
-    it "increments the 'calls' property", ->
-      event = Event()
-      listener = event emptyFunction
-      listener.notify()
-      expect(listener.calls).toBe 1
-      listener.notify()
-      expect(listener.calls).toBe 2
+    listener = event spy = jasmine.createSpy()
+    listener.start()
 
-    it "detaches the Listener if 'maxCalls' is reached", ->
-      event = Event()
-      listener = event.once emptyFunction
-      listener.notify()
-      listener.notify()
-      expect(listener.calls).toBe 1
+    listener.notify()
+    expect spy.calls.count()
+      .toBe 1
 
-  describe ".stop()", ->
+  it "increments the `calls` property if `maxCalls` isnt Infinity", ->
 
-    it "detaches the Listener", ->
-      event = Event()
-      listener = event emptyFunction
-      event.emit()
-      listener.stop()
-      event.emit()
-      expect(listener.calls).toBe 1
+    event = Event()
 
-    it "can be safely called multiple times", ->
-      event = Event()
-      listener = event emptyFunction
-      listener.stop()
-      expect -> listener.stop()
+    listener = event 3, emptyFunction
+    listener.start()
+
+    listener.notify()
+    expect listener.calls
+      .toBe 1
+
+    listener.notify()
+    expect listener.calls
+      .toBe 2
+
+  it "detaches the Listener if `maxCalls` is reached", ->
+
+    event = Event()
+
+    listener = event 1, emptyFunction
+    listener.start()
+
+    listener.notify()
+    listener.notify()
+    expect listener.calls
+      .toBe 1
+
+describe "listener.detach()", ->
+
+  it "unpairs the Listener from its Event", ->
+
+    event = Event()
+
+    listener = event 5, emptyFunction
+    listener.start()
+
+    event.emit()
+
+    listener.detach()
+
+    expect listener._event
+      .toBe null
+
+    event.emit()
+
+    expect event.listenerCount
+      .toBe 0
+
+    expect listener.calls
+      .toBe 1
+
+  it "can be safely called multiple times", ->
+
+    event = Event()
+
+    listener = event emptyFunction
+    listener.start()
+
+    listener.detach()
+
+    expect -> listener.detach()
+      .not.toThrow()
+
+describe "listener.stop()", ->
+
+  it "disables the Listener without detaching it", ->
+
+    event = Event()
+
+    listener = event 5, emptyFunction
+    listener.start()
+
+    event.emit()
+
+    listener.stop()
+
+    expect listener._event
+      .toBe event
+
+    event.emit()
+
+    expect event.listenerCount
+      .toBe 1
+
+    expect listener.calls
+      .toBe 1
+
+  it "can be safely called multiple times", ->
+
+    event = Event()
+    listener = event emptyFunction
+    listener.start()
+
+    listener.stop()
+
+    expect -> listener.stop()
       .not.toThrow()
