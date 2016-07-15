@@ -28,7 +28,7 @@ type.defineFrozenValues
       assert listeners, "Invalid event name!"
 
       assertType eventName, String, "eventName"
-      assertType args, Array.Maybe, "args"
+      assert typeof args.length is "number", "'args' must be an array-like object!"
 
       if isDev and args
         eventMap._validateTypes eventName, args

@@ -34,7 +34,7 @@ type.defineFrozenValues({
       listeners = eventMap._listeners[eventName];
       assert(listeners, "Invalid event name!");
       assertType(eventName, String, "eventName");
-      assertType(args, Array.Maybe, "args");
+      assert(typeof args.length === "number", "'args' must be an array-like object!");
       if (isDev && args) {
         eventMap._validateTypes(eventName, args);
       }
