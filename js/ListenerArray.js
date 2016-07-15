@@ -1,12 +1,12 @@
-var Listener, Type, assert, assertType, emptyFunction, getArgProp, immediate, type;
+var Listener, Type, assert, assertType, emptyFunction, fromArgs, immediate, type;
 
 emptyFunction = require("emptyFunction");
 
 assertType = require("assertType");
 
-getArgProp = require("getArgProp");
-
 immediate = require("immediate");
+
+fromArgs = require("fromArgs");
 
 assert = require("assert");
 
@@ -26,7 +26,7 @@ type.defineOptions({
 type.defineValues({
   _value: null,
   _length: 0,
-  _onUpdate: getArgProp("onUpdate"),
+  _onUpdate: fromArgs("onUpdate"),
   _isNotifying: false,
   _queue: function() {
     return [];

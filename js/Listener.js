@@ -1,8 +1,8 @@
-var Listener, Tracer, Type, emptyFunction, getArgProp, getProto, impls, type;
+var Listener, Tracer, Type, emptyFunction, fromArgs, getProto, impls, type;
 
 emptyFunction = require("emptyFunction");
 
-getArgProp = require("getArgProp");
+fromArgs = require("fromArgs");
 
 getProto = require("getProto");
 
@@ -36,7 +36,7 @@ type.defineValues({
       return 0;
     }
   },
-  maxCalls: getArgProp(0),
+  maxCalls: fromArgs(0),
   _event: null,
   _impl: function() {
     return impls.detached;
@@ -44,7 +44,7 @@ type.defineValues({
   _notify: function() {
     return emptyFunction;
   },
-  _onNotify: getArgProp(1)
+  _onNotify: fromArgs(1)
 });
 
 type.definePrototype({

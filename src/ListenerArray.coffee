@@ -1,8 +1,8 @@
 
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
-getArgProp = require "getArgProp"
 immediate = require "immediate"
+fromArgs = require "fromArgs"
 assert = require "assert"
 Type = require "Type"
 
@@ -22,7 +22,7 @@ type.defineValues
 
   _length: 0
 
-  _onUpdate: getArgProp "onUpdate"
+  _onUpdate: fromArgs "onUpdate"
 
   _isNotifying: no
 

@@ -1,6 +1,6 @@
 
 emptyFunction = require "emptyFunction"
-getArgProp = require "getArgProp"
+fromArgs = require "fromArgs"
 getProto = require "getProto"
 Tracer = require "tracer"
 Type = require "Type"
@@ -25,7 +25,7 @@ type.defineValues
 
   calls: (maxCalls) -> 0 if maxCalls isnt Infinity
 
-  maxCalls: getArgProp 0
+  maxCalls: fromArgs 0
 
   _event: null
 
@@ -33,7 +33,7 @@ type.defineValues
 
   _notify: -> emptyFunction
 
-  _onNotify: getArgProp 1
+  _onNotify: fromArgs 1
 
 type.definePrototype
 
