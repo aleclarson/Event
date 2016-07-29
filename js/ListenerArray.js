@@ -36,7 +36,14 @@ type.defineValues({
   }
 });
 
-type.exposeGetters(["length", "isNotifying"]);
+type.defineGetters({
+  length: function() {
+    return this._length;
+  },
+  isNotifying: function() {
+    return this._isNotifying;
+  }
+});
 
 type.defineMethods({
   attach: function(listener) {

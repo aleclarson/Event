@@ -30,10 +30,11 @@ type.defineValues
 
   _detached: -> []
 
-type.exposeGetters [
-  "length"
-  "isNotifying"
-]
+type.defineGetters
+
+  length: -> @_length
+
+  isNotifying: -> @_isNotifying
 
 type.defineMethods
 

@@ -20,7 +20,9 @@ type.defineFrozenValues({
   emit: function() {
     var listeners;
     listeners = Event.ListenerArray();
-    frozen.define(this, "_listeners", listeners);
+    frozen.define(this, "_listeners", {
+      value: listeners
+    });
     return function() {
       return listeners.notify(this, arguments);
     };
@@ -34,16 +36,12 @@ type.initInstance(function(onNotify) {
   return Event.Listener(onNotify).attach(this).start();
 });
 
-type.definePrototype({
-  listenable: {
-    get: function() {
-      return this._listenable || this._defineListenable();
-    }
+type.defineGetters({
+  listenable: function() {
+    return this._listenable || this._defineListenable();
   },
-  listenerCount: {
-    get: function() {
-      return this._listeners.length;
-    }
+  listenerCount: function() {
+    return this._listeners.length;
   }
 });
 
@@ -64,7 +62,9 @@ type.defineMethods({
     listenable = function(maxCalls, onNotify) {
       return Event.Listener(maxCalls, onNotify).attach(event);
     };
-    frozen.define(event, "_listenable", listenable);
+    frozen.define(event, "_listenable", {
+      value: listenable
+    });
     return listenable;
   }
 });
@@ -89,8 +89,10 @@ type.defineStatics({
     lazy: function() {
       var event;
       event = Event();
-      frozen.define(event, "_onAttach", function(listener) {
-        this._listeners.attach(listener);
+      frozen.define(event, "_onAttach", {
+        value: function(listener) {
+          this._listeners.attach(listener);
+        }
       });
       return event;
     }
