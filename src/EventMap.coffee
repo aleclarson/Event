@@ -4,6 +4,7 @@ require "isDev"
 { mutable } = require "Property"
 
 assertType = require "assertType"
+isType = require "isType"
 assert = require "assert"
 steal = require "steal"
 Type = require "Type"
@@ -12,7 +13,7 @@ Event = require "./Event"
 
 type = Type "EventMap", (eventName, maxCalls, onNotify) ->
   listener = Event.Listener maxCalls, onNotify
-  mutable.define listener, "_eventName", eventName
+  mutable.define listener, "_eventName", { value: eventName }
   return listener.attach this
 
 type.argumentTypes =
@@ -24,14 +25,13 @@ type.defineFrozenValues
     eventMap = this
     return (eventName, args) ->
 
-      listeners = eventMap._listeners[eventName]
-      assert listeners, "Invalid event name!"
-
       assertType eventName, String, "eventName"
-      assert typeof args.length is "number", "'args' must be an array-like object!"
+      listeners = eventMap._listeners[eventName]
+      assert listeners, "Event named '#{eventName}' does not exist!"
 
       if isDev and args
-        eventMap._validateTypes eventName, args
+        assert isType(args.length, Number), "'args' must be an array-like object!"
+        eventMap._validateArgs eventName, args
 
       listeners.notify this, args
       return
@@ -46,9 +46,12 @@ type.initInstance (events) ->
 type.defineMethods
 
   _addEvents: (events) ->
-    for eventName, config of events
-      @_types[eventName] = steal config, "types" if config.types
-      @_listeners[eventName] = Event.ListenerArray()
+    types = @_types
+    listeners = @_listeners
+    for eventName, eventTypes of events
+      assert not listeners[eventName], "Event named '#{eventName}' already exists!"
+      eventTypes and types[eventName] = eventTypes
+      listeners[eventName] = Event.ListenerArray()
     return
 
   _onAttach: (listener) ->
@@ -64,12 +67,11 @@ type.defineMethods
 
 isDev and type.defineMethods
 
-  _validateTypes: (event, args) ->
-    types = @_types[event]
-    return if not types
+  _validateArgs: (eventName, args) ->
+    return if not argTypes = @_types[eventName]
     index = 0
-    for key, type of types
-      assertType args[index], type, key
+    for argName, argType of argTypes
+      assertType args[index], argType, argName
       index += 1
     return
 

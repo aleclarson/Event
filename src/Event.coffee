@@ -17,7 +17,7 @@ type.defineFrozenValues
 
   emit: ->
     listeners = Event.ListenerArray()
-    frozen.define this, "_listeners", listeners
+    frozen.define this, "_listeners", { value: listeners }
     return -> listeners.notify this, arguments
 
 # If a callback was passed, create a Listener
@@ -28,12 +28,12 @@ type.initInstance (onNotify) ->
     .attach this
     .start()
 
-type.definePrototype
+type.defineGetters
 
-  listenable: get: ->
+  listenable: ->
     @_listenable or @_defineListenable()
 
-  listenerCount: get: ->
+  listenerCount: ->
     @_listeners.length
 
 type.defineMethods
@@ -58,7 +58,7 @@ type.defineMethods
       Event.Listener maxCalls, onNotify
         .attach event
 
-    frozen.define event, "_listenable", listenable
+    frozen.define event, "_listenable", { value: listenable }
     return listenable
 
 type.defineStatics
@@ -76,9 +76,10 @@ type.defineStatics
 
     event = Event()
 
-    frozen.define event, "_onAttach", (listener) ->
-      @_listeners.attach listener
-      return
+    frozen.define event, "_onAttach",
+      value: (listener) ->
+        @_listeners.attach listener
+        return
 
     return event
 
