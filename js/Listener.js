@@ -1,8 +1,6 @@
-var Listener, Tracer, Type, emptyFunction, fromArgs, getProto, impls, type;
+var Listener, Tracer, Type, emptyFunction, getProto, impls, type;
 
 emptyFunction = require("emptyFunction");
-
-fromArgs = require("fromArgs");
 
 getProto = require("getProto");
 
@@ -21,7 +19,7 @@ type.initArguments(function(args) {
 
 type.argumentTypes = {
   maxCalls: Number,
-  onNotify: Function
+  callback: Function
 };
 
 type.argumentDefaults = {
@@ -30,33 +28,27 @@ type.argumentDefaults = {
 
 type.trace();
 
-type.defineValues({
-  calls: function(maxCalls) {
-    if (maxCalls !== 2e308) {
-      return 0;
-    }
-  },
-  maxCalls: fromArgs(0),
-  _event: null,
-  _impl: function() {
-    return impls.detached;
-  },
-  _notify: function() {
-    return emptyFunction;
-  },
-  _onNotify: fromArgs(1)
+type.defineValues(function(maxCalls, callback) {
+  if (maxCalls !== 2e308) {
+    ({
+      calls: 0
+    });
+  }
+  return {
+    maxCalls: maxCalls,
+    _event: null,
+    _impl: impls.detached,
+    _notify: emptyFunction,
+    _callback: callback
+  };
 });
 
-type.definePrototype({
-  isListening: {
-    get: function() {
-      return this._notify !== emptyFunction;
-    }
+type.defineGetters({
+  isListening: function() {
+    return this._notify !== emptyFunction;
   },
-  notify: {
-    get: function() {
-      return this._notify;
-    }
+  notify: function() {
+    return this._notify;
   }
 });
 
@@ -95,11 +87,11 @@ type.defineMethods({
     this._notify = emptyFunction;
   },
   _notifyUnlimited: function(context, args) {
-    this._onNotify.apply(context, args);
+    this._callback.apply(context, args);
   },
   _notifyLimited: function(context, args) {
     this.calls += 1;
-    this._onNotify.apply(context, args);
+    this._callback.apply(context, args);
     if (this.calls === this.maxCalls) {
       this.detach();
     }

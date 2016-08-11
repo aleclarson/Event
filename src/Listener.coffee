@@ -1,6 +1,5 @@
 
 emptyFunction = require "emptyFunction"
-fromArgs = require "fromArgs"
 getProto = require "getProto"
 Tracer = require "tracer"
 Type = require "Type"
@@ -14,34 +13,32 @@ type.initArguments (args) ->
 
 type.argumentTypes =
   maxCalls: Number
-  onNotify: Function
+  callback: Function
 
 type.argumentDefaults =
   maxCalls: Infinity
 
 type.trace()
 
-type.defineValues
+type.defineValues (maxCalls, callback) ->
 
-  calls: (maxCalls) -> 0 if maxCalls isnt Infinity
+  calls: 0 if maxCalls isnt Infinity
 
-  maxCalls: fromArgs 0
+  maxCalls: maxCalls
 
   _event: null
 
-  _impl: -> impls.detached
+  _impl: impls.detached
 
-  _notify: -> emptyFunction
+  _notify: emptyFunction
 
-  _onNotify: fromArgs 1
+  _callback: callback
 
-type.definePrototype
+type.defineGetters
 
-  isListening: get: ->
-    @_notify isnt emptyFunction
+  isListening: -> @_notify isnt emptyFunction
 
-  notify: get: ->
-    @_notify
+  notify: -> @_notify
 
 type.defineMethods
 
@@ -83,12 +80,12 @@ type.defineMethods
     return
 
   _notifyUnlimited: (context, args) ->
-    @_onNotify.apply context, args
+    @_callback.apply context, args
     return
 
   _notifyLimited: (context, args) ->
     @calls += 1
-    @_onNotify.apply context, args
+    @_callback.apply context, args
     @detach() if @calls is @maxCalls
     return
 

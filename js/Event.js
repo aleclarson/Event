@@ -42,6 +42,9 @@ type.defineGetters({
   },
   listenerCount: function() {
     return this._listeners.length;
+  },
+  hasListeners: function() {
+    return this._listeners.length > 0;
   }
 });
 

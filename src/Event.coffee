@@ -36,6 +36,9 @@ type.defineGetters
   listenerCount: ->
     @_listeners.length
 
+  hasListeners: ->
+    @_listeners.length > 0
+
 type.defineMethods
 
   reset: ->

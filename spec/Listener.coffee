@@ -3,7 +3,7 @@ Event = require "../src/Event"
 
 describe "listener.notify()", ->
 
-  it "calls the `_onNotify` property", ->
+  it "calls the `_callback` property", ->
 
     event = Event()
 

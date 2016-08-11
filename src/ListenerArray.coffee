@@ -2,7 +2,6 @@
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
 immediate = require "immediate"
-fromArgs = require "fromArgs"
 assert = require "assert"
 Type = require "Type"
 
@@ -11,24 +10,21 @@ Listener = require "./Listener"
 type = Type "ListenerArray"
 
 type.defineOptions
+  onUpdate: Function.withDefault emptyFunction
 
-  onUpdate:
-    type: Function
-    default: emptyFunction
-
-type.defineValues
+type.defineValues (options) ->
 
   _value: null
 
   _length: 0
 
-  _onUpdate: fromArgs "onUpdate"
+  _onUpdate: options.onUpdate
 
   _isNotifying: no
 
-  _queue: -> []
+  _queue: []
 
-  _detached: -> []
+  _detached: []
 
 type.defineGetters
 

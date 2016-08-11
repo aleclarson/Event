@@ -1,12 +1,10 @@
-var Listener, Type, assert, assertType, emptyFunction, fromArgs, immediate, type;
+var Listener, Type, assert, assertType, emptyFunction, immediate, type;
 
 emptyFunction = require("emptyFunction");
 
 assertType = require("assertType");
 
 immediate = require("immediate");
-
-fromArgs = require("fromArgs");
 
 assert = require("assert");
 
@@ -17,23 +15,18 @@ Listener = require("./Listener");
 type = Type("ListenerArray");
 
 type.defineOptions({
-  onUpdate: {
-    type: Function,
-    "default": emptyFunction
-  }
+  onUpdate: Function.withDefault(emptyFunction)
 });
 
-type.defineValues({
-  _value: null,
-  _length: 0,
-  _onUpdate: fromArgs("onUpdate"),
-  _isNotifying: false,
-  _queue: function() {
-    return [];
-  },
-  _detached: function() {
-    return [];
-  }
+type.defineValues(function(options) {
+  return {
+    _value: null,
+    _length: 0,
+    _onUpdate: options.onUpdate,
+    _isNotifying: false,
+    _queue: [],
+    _detached: []
+  };
 });
 
 type.defineGetters({
