@@ -16,8 +16,8 @@ type = Type "EventMap", (eventName, maxCalls, onNotify) ->
   mutable.define listener, "_eventName", { value: eventName }
   return listener.attach this
 
-type.argumentTypes =
-  events: Object
+type.defineArgs
+  events: Object.isRequired
 
 type.defineFrozenValues
 

@@ -25,9 +25,9 @@ type = Type("EventMap", function(eventName, maxCalls, onNotify) {
   return listener.attach(this);
 });
 
-type.argumentTypes = {
-  events: Object
-};
+type.defineArgs({
+  events: Object.isRequired
+});
 
 type.defineFrozenValues({
   emit: function() {

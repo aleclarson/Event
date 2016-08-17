@@ -10,21 +10,17 @@ Type = require("Type");
 
 type = Type("Listener");
 
-type.initArguments(function(args) {
-  if (args[0] instanceof Function) {
+type.initArgs(function(args) {
+  if (typeof args[0] === "function") {
     args[1] = args[0];
-    return args[0] = void 0;
+    args[0] = void 0;
   }
 });
 
-type.argumentTypes = {
-  maxCalls: Number,
-  callback: Function
-};
-
-type.argumentDefaults = {
-  maxCalls: 2e308
-};
+type.defineArgs({
+  maxCalls: Number.withDefault(2e308),
+  callback: Function.isRequired
+});
 
 type.trace();
 

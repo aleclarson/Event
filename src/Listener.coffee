@@ -6,17 +6,15 @@ Type = require "Type"
 
 type = Type "Listener"
 
-type.initArguments (args) ->
-  if args[0] instanceof Function
+type.initArgs (args) ->
+  if typeof args[0] is "function"
     args[1] = args[0]
     args[0] = undefined
+  return
 
-type.argumentTypes =
-  maxCalls: Number
-  callback: Function
-
-type.argumentDefaults =
-  maxCalls: Infinity
+type.defineArgs
+  maxCalls: Number.withDefault Infinity
+  callback: Function.isRequired
 
 type.trace()
 

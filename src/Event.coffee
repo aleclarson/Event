@@ -4,12 +4,12 @@
 Tracer = require "tracer"
 Type = require "Type"
 
-type = Type "Event", (maxCalls, onNotify) ->
-  Event.Listener maxCalls, onNotify
+type = Type "Event", (maxCalls, callback) ->
+  Event.Listener maxCalls, callback
     .attach this
 
-type.argumentTypes =
-  onNotify: Function.Maybe
+type.defineArgs
+  callback: Function
 
 type.trace()
 
@@ -22,9 +22,9 @@ type.defineFrozenValues
 
 # If a callback was passed, create a Listener
 # that listens until this Event is GC'd.
-type.initInstance (onNotify) ->
-  return if not onNotify
-  Event.Listener onNotify
+type.initInstance (callback) ->
+  return if not callback
+  Event.Listener callback
     .attach this
     .start()
 
@@ -57,8 +57,8 @@ type.defineMethods
   _defineListenable: ->
 
     event = this
-    listenable = (maxCalls, onNotify) ->
-      Event.Listener maxCalls, onNotify
+    listenable = (maxCalls, callback) ->
+      Event.Listener maxCalls, callback
         .attach event
 
     frozen.define event, "_listenable", { value: listenable }

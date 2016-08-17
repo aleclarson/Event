@@ -6,13 +6,13 @@ Tracer = require("tracer");
 
 Type = require("Type");
 
-type = Type("Event", function(maxCalls, onNotify) {
-  return Event.Listener(maxCalls, onNotify).attach(this);
+type = Type("Event", function(maxCalls, callback) {
+  return Event.Listener(maxCalls, callback).attach(this);
 });
 
-type.argumentTypes = {
-  onNotify: Function.Maybe
-};
+type.defineArgs({
+  callback: Function
+});
 
 type.trace();
 
@@ -29,11 +29,11 @@ type.defineFrozenValues({
   }
 });
 
-type.initInstance(function(onNotify) {
-  if (!onNotify) {
+type.initInstance(function(callback) {
+  if (!callback) {
     return;
   }
-  return Event.Listener(onNotify).attach(this).start();
+  return Event.Listener(callback).attach(this).start();
 });
 
 type.defineGetters({
@@ -62,8 +62,8 @@ type.defineMethods({
   _defineListenable: function() {
     var event, listenable;
     event = this;
-    listenable = function(maxCalls, onNotify) {
-      return Event.Listener(maxCalls, onNotify).attach(event);
+    listenable = function(maxCalls, callback) {
+      return Event.Listener(maxCalls, callback).attach(event);
     };
     frozen.define(event, "_listenable", {
       value: listenable
