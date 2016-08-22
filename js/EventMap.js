@@ -1,4 +1,4 @@
-var Event, Type, assert, assertType, isType, mutable, steal, type;
+var Event, Type, assertType, isType, mutable, type;
 
 require("isDev");
 
@@ -8,17 +8,13 @@ assertType = require("assertType");
 
 isType = require("isType");
 
-assert = require("assert");
-
-steal = require("steal");
-
 Type = require("Type");
 
 Event = require("./Event");
 
-type = Type("EventMap", function(eventName, maxCalls, onNotify) {
+type = Type("EventMap", function(eventName, maxCalls, callback) {
   var listener;
-  listener = Event.Listener(maxCalls, onNotify);
+  listener = Event.Listener(maxCalls, callback);
   mutable.define(listener, "_eventName", {
     value: eventName
   });
@@ -37,9 +33,10 @@ type.defineFrozenValues({
       var listeners;
       assertType(eventName, String, "eventName");
       listeners = eventMap._listeners[eventName];
-      assert(listeners, "Event named '" + eventName + "' does not exist!");
-      if (isDev && args) {
-        assert(isType(args.length, Number), "'args' must be an array-like object!");
+      if (isDev) {
+        if (!listeners) {
+          throw Error("Event named '" + eventName + "' does not exist!");
+        }
         eventMap._validateArgs(eventName, args);
       }
       listeners.notify(this, args);
@@ -64,13 +61,17 @@ type.defineMethods({
     listeners = this._listeners;
     for (eventName in events) {
       eventTypes = events[eventName];
-      assert(!listeners[eventName], "Event named '" + eventName + "' already exists!");
+      if (isDev && listeners[eventName]) {
+        throw Error("Event named '" + eventName + "' already exists!");
+      }
       eventTypes && (types[eventName] = eventTypes);
       listeners[eventName] = Event.ListenerArray();
     }
   },
   _onAttach: function(listener) {
-    assert(this._listeners[listener._eventName], "Invalid event name!");
+    if (isDev && !this._listeners[listener._eventName]) {
+      throw Error("Invalid event name: '" + listener._eventName + "'");
+    }
     this._listeners[listener._eventName].attach(listener);
     Event.didAttach.emit(listener, this);
   },
@@ -83,8 +84,12 @@ type.defineMethods({
 isDev && type.defineMethods({
   _validateArgs: function(eventName, args) {
     var argName, argType, argTypes, index;
-    if (!(argTypes = this._types[eventName])) {
+    argTypes = this._types[eventName];
+    if (!argTypes) {
       return;
+    }
+    if (isDev && !isType(args.length, Number)) {
+      throw Error("'args' must be an array-like object!");
     }
     index = 0;
     for (argName in argTypes) {

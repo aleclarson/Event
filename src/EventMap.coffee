@@ -1,19 +1,17 @@
 
 require "isDev"
 
-{ mutable } = require "Property"
+{mutable} = require "Property"
 
 assertType = require "assertType"
 isType = require "isType"
-assert = require "assert"
-steal = require "steal"
 Type = require "Type"
 
 Event = require "./Event"
 
-type = Type "EventMap", (eventName, maxCalls, onNotify) ->
-  listener = Event.Listener maxCalls, onNotify
-  mutable.define listener, "_eventName", { value: eventName }
+type = Type "EventMap", (eventName, maxCalls, callback) ->
+  listener = Event.Listener maxCalls, callback
+  mutable.define listener, "_eventName", {value: eventName}
   return listener.attach this
 
 type.defineArgs
@@ -27,10 +25,10 @@ type.defineFrozenValues
 
       assertType eventName, String, "eventName"
       listeners = eventMap._listeners[eventName]
-      assert listeners, "Event named '#{eventName}' does not exist!"
 
-      if isDev and args
-        assert isType(args.length, Number), "'args' must be an array-like object!"
+      if isDev
+        if not listeners
+          throw Error "Event named '#{eventName}' does not exist!"
         eventMap._validateArgs eventName, args
 
       listeners.notify this, args
@@ -49,13 +47,19 @@ type.defineMethods
     types = @_types
     listeners = @_listeners
     for eventName, eventTypes of events
-      assert not listeners[eventName], "Event named '#{eventName}' already exists!"
+
+      if isDev and listeners[eventName]
+        throw Error "Event named '#{eventName}' already exists!"
+
       eventTypes and types[eventName] = eventTypes
       listeners[eventName] = Event.ListenerArray()
     return
 
   _onAttach: (listener) ->
-    assert @_listeners[listener._eventName], "Invalid event name!"
+
+    if isDev and not @_listeners[listener._eventName]
+      throw Error "Invalid event name: '#{listener._eventName}'"
+
     @_listeners[listener._eventName].attach listener
     Event.didAttach.emit listener, this
     return
@@ -65,10 +69,16 @@ type.defineMethods
     listener._eventName = null
     return
 
-isDev and type.defineMethods
+isDev and
+type.defineMethods
 
   _validateArgs: (eventName, args) ->
-    return if not argTypes = @_types[eventName]
+    argTypes = @_types[eventName]
+    return if not argTypes
+
+    if isDev and not isType args.length, Number
+      throw Error "'args' must be an array-like object!"
+
     index = 0
     for argName, argType of argTypes
       assertType args[index], argType, argName
