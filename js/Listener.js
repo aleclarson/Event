@@ -100,7 +100,7 @@ impls = {
   detached: {
     attach: Listener.prototype._attach,
     detach: emptyFunction,
-    start: emptyFunction,
+    start: emptyFunction.thatReturnsThis,
     stop: emptyFunction
   },
   stopped: {
@@ -112,7 +112,7 @@ impls = {
   started: {
     attach: emptyFunction.thatReturnsThis,
     detach: Listener.prototype._detach,
-    start: emptyFunction,
+    start: emptyFunction.thatReturnsThis,
     stop: Listener.prototype._stop
   }
 };

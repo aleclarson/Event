@@ -94,7 +94,7 @@ impls =
   detached:
     attach: Listener::_attach
     detach: emptyFunction
-    start: emptyFunction
+    start: emptyFunction.thatReturnsThis
     stop: emptyFunction
 
   stopped:
@@ -106,5 +106,5 @@ impls =
   started:
     attach: emptyFunction.thatReturnsThis
     detach: Listener::_detach
-    start: emptyFunction
+    start: emptyFunction.thatReturnsThis
     stop: Listener::_stop
