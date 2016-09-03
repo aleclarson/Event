@@ -20,9 +20,9 @@ type.trace()
 
 type.defineValues (maxCalls, callback) ->
 
-  calls: 0 if maxCalls isnt Infinity
-
   maxCalls: maxCalls
+
+  calls: 0 if maxCalls isnt Infinity
 
   _event: null
 

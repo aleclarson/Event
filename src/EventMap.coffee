@@ -9,10 +9,7 @@ Type = require "Type"
 
 Event = require "./Event"
 
-type = Type "EventMap", (eventName, maxCalls, callback) ->
-  listener = Event.Listener maxCalls, callback
-  mutable.define listener, "_eventName", {value: eventName}
-  return listener.attach this
+type = Type "EventMap"
 
 type.defineArgs
   events: Object.isRequired
@@ -40,6 +37,11 @@ type.defineFrozenValues
 
 type.initInstance (events) ->
   @_addEvents events
+
+type.defineFunction (eventName, maxCalls, callback) ->
+  listener = Event.Listener maxCalls, callback
+  mutable.define listener, "_eventName", {value: eventName}
+  return listener.attach this
 
 type.defineMethods
 

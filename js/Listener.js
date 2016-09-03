@@ -25,13 +25,9 @@ type.defineArgs({
 type.trace();
 
 type.defineValues(function(maxCalls, callback) {
-  if (maxCalls !== 2e308) {
-    ({
-      calls: 0
-    });
-  }
   return {
     maxCalls: maxCalls,
+    calls: maxCalls !== 2e308 ? 0 : void 0,
     _event: null,
     _impl: impls.detached,
     _notify: emptyFunction,

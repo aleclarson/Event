@@ -6,15 +6,17 @@ Tracer = require("tracer");
 
 Type = require("Type");
 
-type = Type("Event", function(maxCalls, callback) {
-  return Event.Listener(maxCalls, callback).attach(this);
-});
+type = Type("Event");
+
+type.trace();
 
 type.defineArgs({
   callback: Function
 });
 
-type.trace();
+type.defineFunction(function(maxCalls, callback) {
+  return Event.Listener(maxCalls, callback).attach(this);
+});
 
 type.defineFrozenValues({
   emit: function() {

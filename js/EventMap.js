@@ -12,14 +12,7 @@ Type = require("Type");
 
 Event = require("./Event");
 
-type = Type("EventMap", function(eventName, maxCalls, callback) {
-  var listener;
-  listener = Event.Listener(maxCalls, callback);
-  mutable.define(listener, "_eventName", {
-    value: eventName
-  });
-  return listener.attach(this);
-});
+type = Type("EventMap");
 
 type.defineArgs({
   events: Object.isRequired
@@ -52,6 +45,15 @@ type.defineFrozenValues({
 
 type.initInstance(function(events) {
   return this._addEvents(events);
+});
+
+type.defineFunction(function(eventName, maxCalls, callback) {
+  var listener;
+  listener = Event.Listener(maxCalls, callback);
+  mutable.define(listener, "_eventName", {
+    value: eventName
+  });
+  return listener.attach(this);
 });
 
 type.defineMethods({
