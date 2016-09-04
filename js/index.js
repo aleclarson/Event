@@ -10,7 +10,7 @@ Event.ListenerArray = require("./ListenerArray");
 
 inject = require("Builder/inject");
 
-inject("EventMap", Event.Map);
+inject("Event", Event);
 
 module.exports = Event;
 
