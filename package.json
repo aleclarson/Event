@@ -2,6 +2,14 @@
   "name": "Event",
   "version": "2.0.1",
   "main": "js/index",
+  "plugins": [
+    "lotus-coffee",
+    "lotus-runner"
+  ],
+  "scripts": {
+    "build": "coffee -cb -o js src",
+    "postinstall": "postinstall-build js 'npm run build'"
+  },
   "dependencies": {
     "Builder": "aleclarson/Builder#1.1.0",
     "Property": "aleclarson/Property#1.1.1",
@@ -13,15 +21,11 @@
     "immediate": "aleclarson/immediate#4.1.0",
     "isDev": "aleclarson/isDev#1.0.0",
     "isType": "aleclarson/isType#1.0.0",
+    "postinstall-build": "0.2.x",
     "tracer": "aleclarson/tracer#1.0.0"
   },
   "devDependencies": {
-    "getType": "aleclarson/getType#1.0.0"
-  },
-  "lotus": {
-    "plugins": [
-      "lotus-coffee",
-      "lotus-runner"
-    ]
+    "getType": "aleclarson/getType#1.0.0",
+    "coffee-script": "1.9.x"
   }
 }
