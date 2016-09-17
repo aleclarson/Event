@@ -11,7 +11,7 @@
     "postinstall": "postinstall-build js 'npm run build'"
   },
   "dependencies": {
-    "Builder": "aleclarson/Builder#1.1.0",
+    "Builder": "aleclarson/Builder#2.0.0",
     "Property": "aleclarson/Property#1.1.1",
     "Type": "aleclarson/Type#1.1.0",
     "assert": "aleclarson/assert#1.0.0",
@@ -25,7 +25,7 @@
     "tracer": "aleclarson/tracer#1.0.0"
   },
   "devDependencies": {
-    "getType": "aleclarson/getType#1.0.0",
-    "coffee-script": "1.9.x"
+    "coffee-script": "1.9.x",
+    "getType": "aleclarson/getType#1.0.0"
   }
 }
