@@ -19,7 +19,7 @@
     "emptyFunction": "aleclarson/emptyFunction#1.0.0",
     "getProto": "aleclarson/getProto#1.0.0",
     "immediate": "aleclarson/immediate#4.1.0",
-    "isDev": "aleclarson/isDev#1.0.0",
+    "isDev": "aleclarson/isDev#2.0.0",
     "isType": "aleclarson/isType#1.0.0",
     "postinstall-build": "0.2.x",
     "tracer": "aleclarson/tracer#1.0.0"

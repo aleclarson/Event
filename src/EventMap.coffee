@@ -1,10 +1,9 @@
 
-require "isDev"
-
 {mutable} = require "Property"
 
 assertType = require "assertType"
 isType = require "isType"
+isDev = require "isDev"
 Type = require "Type"
 
 Event = require "./Event"
