@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "Builder": "aleclarson/Builder#2.0.0",
-    "Property": "aleclarson/Property#1.1.1",
+    "Property": "aleclarson/Property#1.2.0",
     "Type": "aleclarson/Type#1.1.0",
     "assert": "aleclarson/assert#1.0.0",
     "assertType": "aleclarson/assertType#2.0.0",
