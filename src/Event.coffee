@@ -68,15 +68,6 @@ type.defineMethods
 
 type.defineStatics
 
-  Map: lazy: ->
-    require "./EventMap"
-
-  Listener: lazy: ->
-    require "./Listener"
-
-  ListenerArray: lazy: ->
-    require "./ListenerArray"
-
   didAttach: lazy: ->
 
     event = Event()
