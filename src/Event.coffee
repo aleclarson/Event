@@ -8,7 +8,13 @@ type = Type "Event"
 
 type.trace()
 
-type.defineArgs
+type.initArgs (args) ->
+  if typeof args[0] is "function"
+    args[0] = callback: args[0]
+  return
+
+type.defineOptions
+  async: Boolean.withDefault yes
   callback: Function
 
 type.defineFunction (maxCalls, callback) ->
@@ -17,16 +23,16 @@ type.defineFunction (maxCalls, callback) ->
 
 type.defineFrozenValues
 
-  emit: ->
-    listeners = Event.ListenerArray()
-    frozen.define this, "_listeners", { value: listeners }
+  emit: (options) ->
+    listeners = Event.ListenerArray {async: options.async}
+    frozen.define this, "_listeners", {value: listeners}
     return -> listeners.notify this, arguments
 
 # If a callback was passed, create a Listener
 # that listens until this Event is GC'd.
-type.initInstance (callback) ->
-  return if not callback
-  Event.Listener callback
+type.initInstance (options) ->
+  return if not options.callback
+  Event.Listener options.callback
     .attach this
     .start()
 
@@ -63,7 +69,7 @@ type.defineMethods
       Event.Listener maxCalls, callback
         .attach event
 
-    frozen.define event, "_listenable", { value: listenable }
+    frozen.define event, "_listenable", {value: listenable}
     return listenable
 
 type.defineStatics

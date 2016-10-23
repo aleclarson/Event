@@ -2,29 +2,37 @@
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
 immediate = require "immediate"
-assert = require "assert"
 Type = require "Type"
+bind = require "bind"
 
 Listener = require "./Listener"
 
 type = Type "ListenerArray"
 
 type.defineOptions
+  async: Boolean.withDefault yes
   onUpdate: Function.withDefault emptyFunction
 
 type.defineValues (options) ->
 
-  _value: null
-
-  _length: 0
-
   _onUpdate: options.onUpdate
 
+  # Can equal null, a single listener, or an array of listeners
+  _value: null
+
+  # The number of listeners
+  _length: 0
+
+  # Are the listeners in the middle of being notified?
   _isNotifying: no
 
-  _queue: []
-
+  # Any listeners that must be detached (once the queue is empty)
   _detached: []
+
+  # Pairs of context & args that will be sent to every listener
+  _queue: [] if options.async
+
+  _next: bind.method(this, "_next") if options.async
 
 type.defineGetters
 
@@ -43,7 +51,7 @@ type.defineMethods
       return
 
     if oldValue.constructor is Listener
-      @_update [ oldValue, listener ], 2
+      @_update [oldValue, listener], 2
       return
 
     @_update oldValue, oldValue.push listener
@@ -51,8 +59,9 @@ type.defineMethods
 
   notify: (context, args) ->
 
-    if @_isNotifying or @_queue.length
-      @_queue.push [ context, args ]
+    queue = @_queue
+    if queue and (@_isNotifying or queue.length)
+      queue.push [context, args]
       return
 
     oldValue = @_value
@@ -72,7 +81,9 @@ type.defineMethods
     @_flush()
 
     # Consume the next queued event, but wait for the event loop to empty.
-    immediate => @_next()
+    if queue
+    then immediate @_next
+    else @_next()
     return
 
   detach: (listener) ->
@@ -84,15 +95,20 @@ type.defineMethods
       return
 
     oldValue = @_value
-    assert oldValue, "No listeners are attached!"
+    if not oldValue
+      throw Error "No listeners are attached!"
 
     if oldValue.constructor is Listener
-      assert listener is oldValue, "Listener is not attached to this ListenerArray!"
+
+      if listener isnt oldValue
+        throw Error "Listener is not attached to this ListenerArray!"
+
       @_update null, 0
       return
 
     index = oldValue.indexOf listener
-    assert index >= 0, "Listener is not attached to this ListenerArray!"
+    if index < 0
+      throw Error "Listener is not attached to this ListenerArray!"
 
     oldValue.splice index, 1
     newCount = oldValue.length
@@ -113,7 +129,7 @@ type.defineMethods
 
   _flush: ->
 
-    { length } = listeners = @_detached
+    {length} = listeners = @_detached
 
     if length is 0
       return
@@ -129,8 +145,8 @@ type.defineMethods
 
   _next: ->
     queue = @_queue
-    return if not queue.length
-    [ context, args ] = queue.shift()
+    return unless queue and queue.length
+    [context, args] = queue.shift()
     @notify context, args
     return
 
