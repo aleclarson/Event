@@ -1,8 +1,6 @@
 
 Event = require "./Event"
 
-Event.Map = require "./EventMap"
-
 Event.Listener = require "./Listener"
 
 Event.ListenerArray = require "./ListenerArray"
