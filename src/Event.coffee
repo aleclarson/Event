@@ -4,6 +4,8 @@
 Tracer = require "tracer"
 Type = require "Type"
 
+ListenerArray = require "./ListenerArray"
+
 type = Type "Event"
 
 type.trace()
@@ -24,7 +26,7 @@ type.defineFunction (maxCalls, callback) ->
 type.defineFrozenValues
 
   emit: (options) ->
-    listeners = Event.ListenerArray {async: options.async}
+    listeners = ListenerArray {async: options.async}
     frozen.define this, "_listeners", {value: listeners}
     return -> listeners.notify this, arguments
 

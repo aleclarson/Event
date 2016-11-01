@@ -1,11 +1,10 @@
 
 Event = require "./Event"
 
+Event.Mixin = require "./EventMixin"
+
 Event.Listener = require "./Listener"
 
-Event.ListenerArray = require "./ListenerArray"
-
-inject = require "Builder/inject"
-inject "Event", Event
+Event.ListenerMixin = require "./ListenerMixin"
 
 module.exports = Event
