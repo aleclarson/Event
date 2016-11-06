@@ -1,7 +1,6 @@
 
-{ frozen } = require "Property"
+{frozen} = require "Property"
 
-Tracer = require "tracer"
 isType = require "isType"
 Type = require "Type"
 
