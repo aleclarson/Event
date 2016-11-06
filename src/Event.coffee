@@ -2,6 +2,7 @@
 { frozen } = require "Property"
 
 Tracer = require "tracer"
+isType = require "isType"
 Type = require "Type"
 
 ListenerArray = require "./ListenerArray"
@@ -11,13 +12,17 @@ type = Type "Event"
 type.trace()
 
 type.initArgs (args) ->
-  if typeof args[0] is "function"
-    args[0] = callback: args[0]
+  if isType args[0], Object
+    args[1] = args[0]
+    args[0] = undefined
+  else
+    args[1] ?= {}
   return
 
-type.defineOptions
-  async: Boolean.withDefault yes
+type.defineArgs
   callback: Function
+  options:
+    async: Boolean
 
 type.defineFunction (maxCalls, callback) ->
   Event.Listener maxCalls, callback
@@ -25,16 +30,16 @@ type.defineFunction (maxCalls, callback) ->
 
 type.defineFrozenValues
 
-  emit: (options) ->
-    listeners = ListenerArray {async: options.async}
+  emit: (_, options) ->
+    listeners = ListenerArray {async: options.async ? yes}
     frozen.define this, "_listeners", {value: listeners}
     return -> listeners.notify this, arguments
 
 # If a callback was passed, create a Listener
 # that listens until this Event is GC'd.
-type.initInstance (options) ->
-  return if not options.callback
-  Event.Listener options.callback
+type.initInstance (callback) ->
+  return if not callback
+  Event.Listener callback
     .attach this
     .start()
 
