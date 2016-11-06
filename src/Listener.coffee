@@ -32,6 +32,8 @@ type.defineValues (maxCalls, callback) ->
 
   _callback: callback
 
+  _onDetach: emptyFunction
+
 type.defineGetters
 
   isListening: -> @_notify isnt emptyFunction
@@ -63,6 +65,7 @@ type.defineMethods
     @_notify = emptyFunction
     @_event._onDetach this
     @_event = null
+    @_onDetach()
     return
 
   _start: ->
