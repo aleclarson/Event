@@ -1,47 +1,44 @@
 
 emptyFunction = require "emptyFunction"
-fromArgs = require "fromArgs"
 getProto = require "getProto"
 Tracer = require "tracer"
 Type = require "Type"
 
 type = Type "Listener"
 
-type.initArguments (args) ->
-  if args[0] instanceof Function
+type.initArgs (args) ->
+  if typeof args[0] is "function"
     args[1] = args[0]
     args[0] = undefined
+  return
 
-type.argumentTypes =
-  maxCalls: Number
-  onNotify: Function
-
-type.argumentDefaults =
-  maxCalls: Infinity
+type.defineArgs
+  maxCalls: Number.withDefault Infinity
+  callback: Function.isRequired
 
 type.trace()
 
-type.defineValues
+type.defineValues (maxCalls, callback) ->
 
-  calls: (maxCalls) -> 0 if maxCalls isnt Infinity
+  maxCalls: maxCalls
 
-  maxCalls: fromArgs 0
+  calls: 0 if maxCalls isnt Infinity
 
   _event: null
 
-  _impl: -> impls.detached
+  _impl: impls.detached
 
-  _notify: -> emptyFunction
+  _notify: emptyFunction
 
-  _onNotify: fromArgs 1
+  _callback: callback
 
-type.definePrototype
+  _onDetach: emptyFunction
 
-  isListening: get: ->
-    @_notify isnt emptyFunction
+type.defineGetters
 
-  notify: get: ->
-    @_notify
+  isListening: -> @_notify isnt emptyFunction
+
+  notify: -> @_notify
 
 type.defineMethods
 
@@ -68,6 +65,7 @@ type.defineMethods
     @_notify = emptyFunction
     @_event._onDetach this
     @_event = null
+    @_onDetach()
     return
 
   _start: ->
@@ -83,12 +81,12 @@ type.defineMethods
     return
 
   _notifyUnlimited: (context, args) ->
-    @_onNotify.apply context, args
+    @_callback.apply context, args
     return
 
   _notifyLimited: (context, args) ->
     @calls += 1
-    @_onNotify.apply context, args
+    @_callback.apply context, args
     @detach() if @calls is @maxCalls
     return
 
@@ -99,7 +97,7 @@ impls =
   detached:
     attach: Listener::_attach
     detach: emptyFunction
-    start: emptyFunction
+    start: emptyFunction.thatReturnsThis
     stop: emptyFunction
 
   stopped:
@@ -111,5 +109,5 @@ impls =
   started:
     attach: emptyFunction.thatReturnsThis
     detach: Listener::_detach
-    start: emptyFunction
+    start: emptyFunction.thatReturnsThis
     stop: Listener::_stop

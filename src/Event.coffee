@@ -1,30 +1,44 @@
 
-{ frozen } = require "Property"
+{frozen} = require "Property"
 
-Tracer = require "tracer"
+isType = require "isType"
 Type = require "Type"
 
-type = Type "Event", (maxCalls, onNotify) ->
-  Event.Listener maxCalls, onNotify
-    .attach this
+ListenerArray = require "./ListenerArray"
 
-type.argumentTypes =
-  onNotify: Function.Maybe
+type = Type "Event"
 
 type.trace()
 
+type.initArgs (args) ->
+  if isType args[0], Object
+    args[1] = args[0]
+    args[0] = undefined
+  else
+    args[1] ?= {}
+  return
+
+type.defineArgs
+  callback: Function
+  options:
+    async: Boolean
+
+type.defineFunction (maxCalls, callback) ->
+  Event.Listener maxCalls, callback
+    .attach this
+
 type.defineFrozenValues
 
-  emit: ->
-    listeners = Event.ListenerArray()
-    frozen.define this, "_listeners", { value: listeners }
+  emit: (_, options) ->
+    listeners = ListenerArray {async: options.async ? yes}
+    frozen.define this, "_listeners", {value: listeners}
     return -> listeners.notify this, arguments
 
 # If a callback was passed, create a Listener
 # that listens until this Event is GC'd.
-type.initInstance (onNotify) ->
-  return if not onNotify
-  Event.Listener onNotify
+type.initInstance (callback) ->
+  return if not callback
+  Event.Listener callback
     .attach this
     .start()
 
@@ -35,6 +49,9 @@ type.defineGetters
 
   listenerCount: ->
     @_listeners.length
+
+  hasListeners: ->
+    @_listeners.length > 0
 
 type.defineMethods
 
@@ -54,23 +71,14 @@ type.defineMethods
   _defineListenable: ->
 
     event = this
-    listenable = (maxCalls, onNotify) ->
-      Event.Listener maxCalls, onNotify
+    listenable = (maxCalls, callback) ->
+      Event.Listener maxCalls, callback
         .attach event
 
-    frozen.define event, "_listenable", { value: listenable }
+    frozen.define event, "_listenable", {value: listenable}
     return listenable
 
 type.defineStatics
-
-  Map: lazy: ->
-    require "./EventMap"
-
-  Listener: lazy: ->
-    require "./Listener"
-
-  ListenerArray: lazy: ->
-    require "./ListenerArray"
 
   didAttach: lazy: ->
 
