@@ -1,5 +1,5 @@
 
-# Event v2.1.0 ![stable](https://img.shields.io/badge/stability-stable-4EBA0F.svg?style=flat)
+# Event v2.1.1 ![stable](https://img.shields.io/badge/stability-stable-4EBA0F.svg?style=flat)
 
 A modern approach to event handling in JavaScript:
 
