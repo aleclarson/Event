@@ -1,13 +1,19 @@
 
 getType = require "getType"
 
-Event = require "../src/Event"
+Event = require ".."
+
+# TODO: Special case for calling 'reset' while notifying listeners
+# TODO: Special cases for async emitters
+
+# TODO: Special case for calling 'reset' while notifying listeners
+# TODO: Special cases for async/sync emitters
 
 describe "event(callback)", ->
 
   it "returns a Listener", ->
 
-    event = Event()
+    event = Event {async: no}
     listener = event emptyFunction
 
     expect getType listener
@@ -15,7 +21,7 @@ describe "event(callback)", ->
 
   it "lazily converts to array storage", ->
 
-    event = Event()
+    event = Event {async: no}
 
     foo = event emptyFunction
     foo.start()
@@ -31,7 +37,7 @@ describe "event(callback)", ->
 
   it "supports stopping the Listener after one emit", ->
 
-    event = Event()
+    event = Event {async: no}
 
     listener = event 1, emptyFunction
     listener.start()
@@ -44,7 +50,7 @@ describe "event(callback)", ->
 
   it "supports stopping the Listener after X emits", ->
 
-    event = Event()
+    event = Event {async: no}
 
     listener = event 2, emptyFunction
     listener.start()
@@ -60,7 +66,7 @@ describe "event.emit(args...)", ->
 
   it "notifies every attached Listener", ->
 
-    event = Event()
+    event = Event {async: no}
 
     foo = event 1, emptyFunction
     foo.start()
@@ -78,7 +84,7 @@ describe "event.emit(args...)", ->
 
   it "works with just one Listener", ->
 
-    event = Event()
+    event = Event {async: no}
 
     listener = event 2, emptyFunction
     listener.start()
@@ -90,14 +96,14 @@ describe "event.emit(args...)", ->
 
   it "works with no listeners", ->
 
-    event = Event()
+    event = Event {async: no}
 
     expect -> event.emit()
       .not.toThrow()
 
   it "detaches finished Listeners", ->
 
-    event = Event()
+    event = Event {async: no}
 
     foo = event 2, emptyFunction
     foo.start()
@@ -120,7 +126,7 @@ describe "event.emit(args...)", ->
 
   it "is bound to the Event", ->
 
-    event = Event()
+    event = Event {async: no}
 
     listener = event 2, emptyFunction
     listener.start()
@@ -133,7 +139,7 @@ describe "event.emit(args...)", ->
 
   it "while notifying, any detached Listeners are cleaned up", ->
 
-    event = Event()
+    event = Event {async: no}
 
     foo = event 1, ->
 
@@ -162,7 +168,7 @@ describe "event.emit(args...)", ->
 
   bench ->
 
-    event = Event()
+    event = Event {async: no}
 
     for i in [ 0 .. 5 ]
       event emptyFunction
