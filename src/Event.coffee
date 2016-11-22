@@ -88,9 +88,10 @@ type.defineMethods
 
 type.defineStatics
 
-  didAttach: lazy: ->
+  didAttach: get: ->
 
-    event = Event()
+    frozen.define this, "didAttach",
+      value: event = Event()
 
     frozen.define event, "_onAttach",
       value: (listener) ->
