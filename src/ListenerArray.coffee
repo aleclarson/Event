@@ -44,7 +44,7 @@ type.defineMethods
 
     assertType listener, Listener
 
-    if not oldValue = @_value
+    unless oldValue = @_value
       @_update listener, 1
       return
 
@@ -79,8 +79,7 @@ type.defineMethods
       @_detached.push listener
       return
 
-    oldValue = @_value
-    if not oldValue
+    unless oldValue = @_value
       throw Error "No listeners are attached!"
 
     if oldValue.constructor is Listener
@@ -137,6 +136,7 @@ type.defineMethods
       return
     return
 
+  # Flushes the queue of listeners that need detaching.
   _flush: ->
 
     {length} = listeners = @_detached
