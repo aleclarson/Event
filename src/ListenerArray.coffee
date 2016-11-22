@@ -32,8 +32,6 @@ type.defineValues (options) ->
   # Pairs of context & args that will be sent to every listener
   _queue: [] if options.async
 
-  _next: bind.method(this, "_next") if options.async
-
 type.defineGetters
 
   length: -> @_length
@@ -59,31 +57,18 @@ type.defineMethods
 
   notify: (context, args) ->
 
-    queue = @_queue
-    if queue and (@_isNotifying or queue.length)
-      queue.push [context, args]
+    unless @_queue
+      @_isNotifying = yes
+      @_notify context, args
+      @_isNotifying = no
+      @_flush()
       return
 
-    oldValue = @_value
-    return if not oldValue
+    if @_isNotifying or @_queue.length
+      @_queue.push [context, args]
+      return
 
-    @_isNotifying = yes
-
-    if oldValue.constructor is Listener
-      oldValue.notify context, args
-    else
-      for listener in oldValue
-        listener.notify context, args
-
-    @_isNotifying = no
-
-    # Detach any dead listeners immediately after notify ends.
-    @_flush()
-
-    # Consume the next queued event, but wait for the event loop to empty.
-    if queue
-    then immediate @_next
-    else @_next()
+    @_notifyAsync context, args
     return
 
   detach: (listener) ->
@@ -127,6 +112,31 @@ type.defineMethods
     @_onUpdate newValue, newLength
     return
 
+  # Notify all attached listeners synchronously.
+  _notify: (context, args) ->
+
+    return unless value = @_value
+
+    if value.constructor is Listener
+      value.notify context, args
+      return
+
+    for listener in value
+      listener.notify context, args
+    return
+
+  # Notify all attached listeners (once the JS loop is empty).
+  _notifyAsync: (context, args) ->
+    @_isNotifying = yes
+    immediate =>
+      @_notify context, args
+      @_isNotifying = no
+      @_flush()
+      if next = @_queue.shift()
+        @_notifyAsync next[0], next[1]
+      return
+    return
+
   _flush: ->
 
     {length} = listeners = @_detached
@@ -141,13 +151,6 @@ type.defineMethods
     index = -1
     @detach listeners[index] while ++index < length
     listeners.length = 0
-    return
-
-  _next: ->
-    queue = @_queue
-    return unless queue and queue.length
-    [context, args] = queue.shift()
-    @notify context, args
     return
 
 module.exports = type.build()
