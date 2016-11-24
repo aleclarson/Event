@@ -26,7 +26,7 @@ type.defineValues (options) ->
   # Are the listeners in the middle of being notified?
   _isNotifying: no
 
-  # Any listeners that must be detached (once the queue is empty)
+  # The listeners that need detaching
   _detached: []
 
   # Pairs of context & args that will be sent to every listener
@@ -60,6 +60,7 @@ type.defineMethods
     # Don't notify (or push to queue) if no listeners are attached.
     return unless @_value
 
+    # Perform synchronous emits.
     unless @_queue
       @_isNotifying = yes
       @_notify context, args
@@ -67,10 +68,12 @@ type.defineMethods
       @_flush()
       return
 
+    # Push to queue if async emit is active.
     if @_isNotifying or @_queue.length
       @_queue.push [context, args]
       return
 
+    # Emit immediately after the JS event loop ticks.
     @_notifyAsync context, args
     return
 
@@ -114,14 +117,12 @@ type.defineMethods
     @_onUpdate newValue, newLength
     return
 
-  # Notify all attached listeners synchronously.
   _notify: (context, args) ->
     if @_length is 1
     then @_value.notify context, args
     else @_value.forEach (listener) ->
       listener.notify context, args
 
-  # Notify all attached listeners (once the JS loop is empty).
   _notifyAsync: (context, args) ->
     @_isNotifying = yes
     immediate =>
