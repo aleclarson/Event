@@ -107,7 +107,7 @@ type.defineStatics
   didAttach: get: ->
 
     frozen.define this, "didAttach",
-      value: event = Event()
+      value: event = Event {async: no}
 
     frozen.define event, "_onAttach",
       value: (listener) ->
