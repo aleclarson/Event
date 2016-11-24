@@ -57,6 +57,9 @@ type.defineMethods
 
   notify: (context, args) ->
 
+    # Don't notify (or push to queue) if no listeners are attached.
+    return unless @_value
+
     unless @_queue
       @_isNotifying = yes
       @_notify context, args
@@ -113,16 +116,10 @@ type.defineMethods
 
   # Notify all attached listeners synchronously.
   _notify: (context, args) ->
-
-    return unless value = @_value
-
-    if value.constructor is Listener
-      value.notify context, args
-      return
-
-    for listener in value
+    if @_length is 1
+    then @_value.notify context, args
+    else @_value.forEach (listener) ->
       listener.notify context, args
-    return
 
   # Notify all attached listeners (once the JS loop is empty).
   _notifyAsync: (context, args) ->
