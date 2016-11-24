@@ -88,6 +88,22 @@ type.defineMethods
 
 type.defineStatics
 
+  sync: ->
+    args = arguments
+    if isType args[0], Object
+    then options = args[0]
+    else options = args[1] ? {}
+    options.async = no
+    Event.apply args
+
+  async: ->
+    args = arguments
+    if isType args[0], Object
+    then options = args[0]
+    else options = args[1] ? {}
+    options.async = yes
+    Event.apply args
+
   didAttach: get: ->
 
     frozen.define this, "didAttach",
