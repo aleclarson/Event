@@ -23,6 +23,7 @@ type.initArgs (args) ->
 type.defineArgs
   callback: Function
   options:
+    sync: Boolean
     async: Boolean
     argTypes: Object
 
@@ -39,7 +40,7 @@ type.defineFrozenValues (_, options) ->
     listeners.notify this, arguments
 
   _listeners: listeners = ListenerArray
-    async: options.async ? yes
+    async: options.async ? not options.sync
 
 # If a callback was passed, create a Listener
 # that listens until this Event is GC'd.
