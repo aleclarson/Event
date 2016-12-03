@@ -1,64 +1,55 @@
 
-# Event v2.1.0 ![stable](https://img.shields.io/badge/stability-stable-4EBA0F.svg?style=flat)
+# Event v2.1.1 ![stable](https://img.shields.io/badge/stability-stable-4EBA0F.svg?style=flat)
 
 A modern approach to event handling in JavaScript:
 
 - `Event`: The basic event emitter.
-- `Event.Map`: Centralizes many event emitters.
 - `Event.Listener`: The basic event listener.
-- `Event.ListenerArray`: Centralizes many event listeners.
+- `Event.ListenerArray`: Retains and notifies all attached listeners.
 
-#### Creating an `Event`
+#### `Event`
 
-```coffee
-Event = require "Event"
+If a function is provided as the first argument, it will be called on every `emit`.
 
-didEmit = Event ->
-  # The callback is optional, and called on every emit.
+**Options:**
+- `async`: When true, all emits are delayed using `setImmediate`. Defaults to true.
+- `argTypes`: An object of types used to validate `emit` arguments.
 
-# The number of attached listeners.
-didEmit.listenerCount
-```
+**Properties:**
+- `emit`: The bound method for notifying any listeners (forwarding the context/args)
+- `listenable`: Provides an interface for listening, but not emitting (lazily created)
+- `listenerCount`: The number of attached `Event.Listener` instances
+- `hasListeners`: Equals true if any listeners are attached
 
-#### Creating an `Event.Listener`
+**Methods:**
+- `reset()`: Removes all attached listeners and clears the emit queue. 
 
-First, let's create an `Event.Listener` that detaches itself from
-its `Event` after just one emit.
+#### `Event.Listener`
 
-```coffee
-listener = didEmit 1, ->
-  console.log "didEmit!"
-
-# You must manually start the Listener.
-listener.start()
-
-# Likewise, you must manually stop the Listener.
-# (This lifecycle wouldn't exist if JavaScript had weak references)
-listener.stop()
-```
-
-Next, let's create an `Event.Listener` that never detaches itself.
-In other words, it will listen **forever**.
+You typically create event listeners indirectly.
 
 ```coffee
-listener = didEmit ->
-  console.log "didEmit!"
+# Create a listener that never stops.
+listener = event -> console.log "hey"
 
-listener.start()
-
-listener.stop()
+# Create a listener that stops after 100 calls.
+listener = event 100, -> console.log "hi"
 ```
 
-#### Emitting an `Event`
+For that reason, it's recommended you name your events like `willFoo` or `didFoo` so the syntax reads better.
 
-```coffee
-# Multiple arguments are supported.
-didEmit.emit 1, 2, 3
+**Arguments:**
+- `maxCalls`: The maximum number of times the listener will be called
+- `callback`: The function that will be called
 
-# Feel free to use `call` or `apply` to set the context.
-didEmit.apply this, arguments
-```
+**Properties:**
+- `calls`: The number of times the listener has been called so far
+- `maxCalls`: Same as `arguments[0]`
+- `isListening`: Equals true if the listener will handle new events
 
-#### There's more!
+**Methods:**
+- `attach(event)`: Attaches the listener to an `Event`
+- `detach()`: Detached the listener from its `Event`
+- `start()`: Must be called for the listener to start listening
+- `stop()`: Stop listening, but stay attached (useful if you plan to call `start` later on)
 
-But you'll have to read the source code for now...

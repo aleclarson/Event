@@ -1,7 +1,9 @@
 
 {frozen} = require "Property"
 
+assertType = require "assertType"
 isType = require "isType"
+isDev = require "isDev"
 Type = require "Type"
 
 ListenerArray = require "./ListenerArray"
@@ -22,21 +24,27 @@ type.defineArgs
   callback: Function
   options:
     async: Boolean
+    argTypes: Object
 
 type.defineFunction (maxCalls, callback) ->
   Event.Listener maxCalls, callback
     .attach this
 
-type.defineFrozenValues
+type.defineFrozenValues (_, options) ->
 
-  emit: (_, options) ->
-    listeners = ListenerArray {async: options.async ? yes}
-    frozen.define this, "_listeners", {value: listeners}
-    return -> listeners.notify this, arguments
+  {argTypes} = options
+
+  emit: ->
+    isDev and validateArgs arguments, argTypes
+    listeners.notify this, arguments
+
+  _listeners: listeners = ListenerArray
+    async: options.async ? yes
 
 # If a callback was passed, create a Listener
 # that listens until this Event is GC'd.
 type.initInstance (callback) ->
+
   return if not callback
   Event.Listener callback
     .attach this
@@ -80,9 +88,26 @@ type.defineMethods
 
 type.defineStatics
 
-  didAttach: lazy: ->
+  sync: ->
+    args = arguments
+    if isType args[0], Object
+    then options = args[0]
+    else options = args[1] ? {}
+    options.async = no
+    Event.apply args
 
-    event = Event()
+  async: ->
+    args = arguments
+    if isType args[0], Object
+    then options = args[0]
+    else options = args[1] ? {}
+    options.async = yes
+    Event.apply args
+
+  didAttach: get: ->
+
+    frozen.define this, "didAttach",
+      value: event = Event {async: no}
 
     frozen.define event, "_onAttach",
       value: (listener) ->
@@ -92,3 +117,14 @@ type.defineStatics
     return event
 
 module.exports = Event = type.build()
+
+#
+# Helpers
+#
+
+validateArgs = (args, argTypes) ->
+  return unless argTypes
+  argNames = Object.keys argTypes
+  for name, index in argNames
+    assertType args[index], argTypes[name], name
+  return

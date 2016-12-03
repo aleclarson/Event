@@ -26,13 +26,11 @@ type.defineValues (options) ->
   # Are the listeners in the middle of being notified?
   _isNotifying: no
 
-  # Any listeners that must be detached (once the queue is empty)
+  # The listeners that need detaching
   _detached: []
 
   # Pairs of context & args that will be sent to every listener
   _queue: [] if options.async
-
-  _next: bind.method(this, "_next") if options.async
 
 type.defineGetters
 
@@ -46,7 +44,7 @@ type.defineMethods
 
     assertType listener, Listener
 
-    if not oldValue = @_value
+    unless oldValue = @_value
       @_update listener, 1
       return
 
@@ -59,31 +57,24 @@ type.defineMethods
 
   notify: (context, args) ->
 
-    queue = @_queue
-    if queue and (@_isNotifying or queue.length)
-      queue.push [context, args]
+    # Don't notify (or push to queue) if no listeners are attached.
+    return unless @_value
+
+    # Perform synchronous emits.
+    unless @_queue
+      @_isNotifying = yes
+      @_notify context, args
+      @_isNotifying = no
+      @_flush()
       return
 
-    oldValue = @_value
-    return if not oldValue
+    # Push to queue if async emit is active.
+    if @_isNotifying or @_queue.length
+      @_queue.push [context, args]
+      return
 
-    @_isNotifying = yes
-
-    if oldValue.constructor is Listener
-      oldValue.notify context, args
-    else
-      for listener in oldValue
-        listener.notify context, args
-
-    @_isNotifying = no
-
-    # Detach any dead listeners immediately after notify ends.
-    @_flush()
-
-    # Consume the next queued event, but wait for the event loop to empty.
-    if queue
-    then immediate @_next
-    else @_next()
+    # Emit immediately after the JS event loop ticks.
+    @_notifyAsync context, args
     return
 
   detach: (listener) ->
@@ -94,8 +85,7 @@ type.defineMethods
       @_detached.push listener
       return
 
-    oldValue = @_value
-    if not oldValue
+    unless oldValue = @_value
       throw Error "No listeners are attached!"
 
     if oldValue.constructor is Listener
@@ -127,6 +117,24 @@ type.defineMethods
     @_onUpdate newValue, newLength
     return
 
+  _notify: (context, args) ->
+    if @_length is 1
+    then @_value.notify context, args
+    else @_value.forEach (listener) ->
+      listener.notify context, args
+
+  _notifyAsync: (context, args) ->
+    @_isNotifying = yes
+    immediate =>
+      @_notify context, args
+      @_isNotifying = no
+      @_flush()
+      if next = @_queue.shift()
+        @_notifyAsync next[0], next[1]
+      return
+    return
+
+  # Flushes the queue of listeners that need detaching.
   _flush: ->
 
     {length} = listeners = @_detached
@@ -141,13 +149,6 @@ type.defineMethods
     index = -1
     @detach listeners[index] while ++index < length
     listeners.length = 0
-    return
-
-  _next: ->
-    queue = @_queue
-    return unless queue and queue.length
-    [context, args] = queue.shift()
-    @notify context, args
     return
 
 module.exports = type.build()
