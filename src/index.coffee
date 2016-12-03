@@ -1,8 +1,10 @@
 
 Event = require "./Event"
 
+Event.Listener = require "./Listener"
+
 Event.Mixin = require "./EventMixin"
 
-Event.Listener = require "./Listener"
+Event.Type = require "./EventType"
 
 module.exports = Event
