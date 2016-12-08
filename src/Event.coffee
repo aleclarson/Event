@@ -16,8 +16,8 @@ type.initArgs (args) ->
   if isType args[0], Object
     args[1] = args[0]
     args[0] = undefined
-  else
-    args[1] ?= {}
+  else unless args[1]
+    args[1] = {}
   return
 
 type.defineArgs
@@ -91,19 +91,21 @@ type.defineStatics
 
   sync: ->
     args = arguments
-    if isType args[0], Object
-    then options = args[0]
-    else options = args[1] ? {}
+    options =
+      if isType args[0], Function
+      then args[1] ?= {}
+      else args[0] ?= {}
     options.async = no
-    Event.apply args
+    Event.apply null, args
 
   async: ->
     args = arguments
-    if isType args[0], Object
-    then options = args[0]
-    else options = args[1] ? {}
+    options =
+      if isType args[0], Function
+      then args[1] ?= {}
+      else args[0] ?= {}
     options.async = yes
-    Event.apply args
+    Event.apply null, args
 
   didAttach: get: ->
 
