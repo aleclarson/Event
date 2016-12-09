@@ -54,6 +54,18 @@ type.defineMethods
   stop: ->
     @_impl.stop.call this
 
+  onDetach: (callback) ->
+
+    if @_onDetach is emptyFunction
+      @_onDetach = callback
+      return
+
+    callbackBefore = @_onDetach
+    @_onDetach = ->
+      callbackBefore()
+      callback()
+    return
+
   _attach: (event) ->
     @_impl = impls.stopped
     @_event = event

@@ -68,6 +68,7 @@ listener.start()
 - `isListening`: Equals true if the listener will handle new events
 
 **Methods:**
+- `onDetach(callback)`: Execute a function when the listener is detached
 - `attach(event)`: Attaches the listener to an `Event`
 - `detach()`: Detached the listener from its `Event`
 - `start()`: Must be called for the listener to start listening
