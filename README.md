@@ -1,13 +1,20 @@
 
 # Event v2.2.1 ![stable](https://img.shields.io/badge/stability-stable-4EBA0F.svg?style=flat)
 
-A modern approach to event handling in JavaScript:
+Another take on events in Javascript.
 
-- `Event`: The basic event emitter.
-- `Event.Listener`: The basic event listener.
-- `Event.ListenerArray`: Retains and notifies all attached listeners.
+```coffee
+Event = require "Event"
+
+obj =
+  didShow: Event.sync()
+  show: ->
+    @didShow.emit()
+```
 
 #### `Event`
+
+A simple event emitter.
 
 If a function is provided as the first argument, it will be called on every `emit`.
 
@@ -26,17 +33,30 @@ If a function is provided as the first argument, it will be called on every `emi
 
 #### `Event.Listener`
 
-You typically create event listeners indirectly.
+In most situations, you will not create an `Event.Listener` using the constructor directly. Instead, pass a `Function` to an `Event` instance.
 
 ```coffee
-# Create a listener that never stops.
-listener = event -> console.log "hey"
+listener = obj.didShow ->
+  console.log "obj.didShow()"
 
-# Create a listener that stops after 100 calls.
-listener = event 100, -> console.log "hi"
+# You must manually start each listener.
+listener.start()
+
+# And when finished, manually stop each listener.
+listener.stop()
 ```
 
-For that reason, it's recommended you name your events like `willFoo` or `didFoo` so the syntax reads better.
+One-time listeners are also supported. As well as N-time listeners.
+
+```coffee
+listener = obj.didShow 1, ->
+  console.log "once"
+listener.start()
+
+listener = obj.didShow 100, ->
+  console.log "call: " + listener.calls
+listener.start()
+```
 
 **Arguments:**
 - `maxCalls`: The maximum number of times the listener will be called
