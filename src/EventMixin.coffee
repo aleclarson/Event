@@ -23,7 +23,7 @@ module.exports = (type, config) ->
         if isDev and argTypes
           validateArgs arguments, argTypes
 
-        event.emit.apply null, arguments
+        event.applyEmit arguments
         return
 
       frozen.define this, key, {value: event.listenable}

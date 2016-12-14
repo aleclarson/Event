@@ -5,6 +5,7 @@ assertType = require "assertType"
 isType = require "isType"
 isDev = require "isDev"
 Type = require "Type"
+bind = require "bind"
 
 ListenerArray = require "./ListenerArray"
 
@@ -23,7 +24,6 @@ type.initArgs (args) ->
 type.defineArgs
   callback: Function
   options:
-    sync: Boolean
     async: Boolean
     argTypes: Object
 
@@ -33,19 +33,13 @@ type.defineFunction (maxCalls, callback) ->
 
 type.defineFrozenValues (_, options) ->
 
-  {argTypes} = options
+  _async: options.async
 
-  emit: ->
-    isDev and validateArgs arguments, argTypes
-    listeners.notify this, arguments
-
-  _listeners: listeners = ListenerArray
-    async: options.async ? not options.sync
+  _argTypes: options.argTypes
 
 # If a callback was passed, create a Listener
 # that listens until this Event is GC'd.
 type.initInstance (callback) ->
-
   return if not callback
   Event.Listener callback
     .attach this
@@ -54,22 +48,36 @@ type.initInstance (callback) ->
 type.defineGetters
 
   listenable: ->
-    @_listenable or @_defineListenable()
+    @_listenable or @_createListenable()
 
   listenerCount: ->
-    @_listeners.length
+    if @_listeners
+    then @_listeners.length
+    else 0
 
   hasListeners: ->
-    @_listeners.length > 0
+    @listenerCount > 0
 
 type.defineMethods
 
+  emit: ->
+    isDev and validateArgs arguments, @_argTypes
+    @_listeners and @_listeners.notify arguments
+    return
+
+  bindEmit: ->
+    @_boundEmit or @_createBoundEmit()
+
+  applyEmit: (args) ->
+    @emit.apply this, args
+
   reset: ->
-    @_listeners.reset()
+    @_listeners and @_listeners.reset()
     return
 
   _onAttach: (listener) ->
-    @_listeners.attach listener
+    listeners = @_listeners or @_createListeners()
+    listeners.attach listener
     Event.didAttach.emit listener, this
     return
 
@@ -77,47 +85,37 @@ type.defineMethods
     @_listeners.detach listener
     return
 
-  _defineListenable: ->
+  _createBoundEmit: ->
+    frozen.define this, "_boundEmit",
+      value: boundEmit = bind.method this, "emit"
+    return boundEmit
 
-    event = this
-    listenable = (maxCalls, callback) ->
-      Event.Listener maxCalls, callback
-        .attach event
-
-    frozen.define event, "_listenable", {value: listenable}
+  _createListenable: ->
+    frozen.define this, "_listenable",
+      value: listenable = (maxCalls, callback) =>
+        Event.Listener(maxCalls, callback).attach this
     return listenable
 
+  _createListeners: ->
+    frozen.define this, "_listeners",
+      value: listeners = ListenerArray {async: @_async}
+    return listeners
+
 type.defineStatics
-
-  sync: ->
-    args = arguments
-    options =
-      if isType args[0], Function
-      then args[1] ?= {}
-      else args[0] ?= {}
-    options.async = no
-    Event.apply null, args
-
-  async: ->
-    args = arguments
-    options =
-      if isType args[0], Function
-      then args[1] ?= {}
-      else args[0] ?= {}
-    options.async = yes
-    Event.apply null, args
 
   didAttach: get: ->
 
     frozen.define this, "didAttach",
-      value: event = Event {async: no}
+      value: didAttach = Event()
 
-    frozen.define event, "_onAttach",
+    # Prevent 'didAttach' from triggering itself.
+    frozen.define didAttach, "_onAttach",
       value: (listener) ->
-        @_listeners.attach listener
+        listeners = @_listeners or @_createListeners()
+        listeners.attach listener
         return
 
-    return event
+    return didAttach
 
 module.exports = Event = type.build()
 

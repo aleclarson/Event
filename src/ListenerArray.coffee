@@ -3,19 +3,15 @@ emptyFunction = require "emptyFunction"
 assertType = require "assertType"
 immediate = require "immediate"
 Type = require "Type"
-bind = require "bind"
 
 Listener = require "./Listener"
 
 type = Type "ListenerArray"
 
 type.defineOptions
-  async: Boolean.withDefault yes
-  onUpdate: Function.withDefault emptyFunction
+  async: Boolean.withDefault no
 
 type.defineValues (options) ->
-
-  _onUpdate: options.onUpdate
 
   # Can equal null, a single listener, or an array of listeners
   _value: null
@@ -23,14 +19,14 @@ type.defineValues (options) ->
   # The number of listeners
   _length: 0
 
-  # Are the listeners in the middle of being notified?
+  # Equals true if listeners are being notified
   _isNotifying: no
 
   # The listeners that need detaching
-  _detached: []
+  _detachQueue: []
 
-  # Pairs of context & args that will be sent to every listener
-  _queue: [] if options.async
+  # An arguments queue used for notifying listeners
+  _notifyQueue: [] if options.async
 
 type.defineGetters
 
@@ -55,26 +51,26 @@ type.defineMethods
     @_update oldValue, oldValue.push listener
     return
 
-  notify: (context, args) ->
+  notify: (args) ->
 
     # Don't notify (or push to queue) if no listeners are attached.
     return unless @_value
 
     # Perform synchronous emits.
-    unless @_queue
+    unless @_notifyQueue
       @_isNotifying = yes
-      @_notify context, args
+      @_notify args
       @_isNotifying = no
       @_flush()
       return
 
     # Push to queue if async emit is active.
-    if @_isNotifying or @_queue.length
-      @_queue.push [context, args]
+    if @_isNotifying or @_notifyQueue.length
+      @_notifyQueue.push args
       return
 
     # Emit immediately after the JS event loop ticks.
-    @_notifyAsync context, args
+    @_notifyAsync args
     return
 
   detach: (listener) ->
@@ -82,7 +78,7 @@ type.defineMethods
     assertType listener, Listener
 
     if @_isNotifying
-      @_detached.push listener
+      @_detachQueue.push listener
       return
 
     unless oldValue = @_value
@@ -114,22 +110,21 @@ type.defineMethods
   _update: (newValue, newLength) ->
     @_value = newValue
     @_length = newLength
-    @_onUpdate newValue, newLength
     return
 
-  _notify: (context, args) ->
+  _notify: (args) ->
     if @_length is 1
-    then @_value.notify context, args
+    then @_value.notify args
     else @_value.forEach (listener) ->
-      listener.notify context, args
+      listener.notify args
 
-  _notifyAsync: (context, args) ->
+  _notifyAsync: (args) ->
     @_isNotifying = yes
-    immediate =>
-      @_notify context, args
+    immediate this, ->
+      @_value and @_notify args
       @_isNotifying = no
       @_flush()
-      if next = @_queue.shift()
+      if next = @_notifyQueue.shift()
         @_notifyAsync next[0], next[1]
       return
     return
@@ -137,7 +132,7 @@ type.defineMethods
   # Flushes the queue of listeners that need detaching.
   _flush: ->
 
-    {length} = listeners = @_detached
+    {length} = listeners = @_detachQueue
 
     if length is 0
       return

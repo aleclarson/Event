@@ -7,7 +7,7 @@ Another take on events in Javascript.
 Event = require "Event"
 
 obj =
-  didShow: Event.sync()
+  didShow: Event()
   show: ->
     @didShow.emit()
 ```
