@@ -13,7 +13,7 @@ describe "event(callback)", ->
 
   it "returns a Listener", ->
 
-    event = Event {async: no}
+    event = Event()
     listener = event emptyFunction
 
     expect getType listener
@@ -21,7 +21,7 @@ describe "event(callback)", ->
 
   it "lazily converts to array storage", ->
 
-    event = Event {async: no}
+    event = Event()
 
     foo = event emptyFunction
     foo.start()
@@ -37,7 +37,7 @@ describe "event(callback)", ->
 
   it "supports stopping the Listener after one emit", ->
 
-    event = Event {async: no}
+    event = Event()
 
     listener = event 1, emptyFunction
     listener.start()
@@ -50,7 +50,7 @@ describe "event(callback)", ->
 
   it "supports stopping the Listener after X emits", ->
 
-    event = Event {async: no}
+    event = Event()
 
     listener = event 2, emptyFunction
     listener.start()
@@ -66,7 +66,7 @@ describe "event.emit(args...)", ->
 
   it "notifies every attached Listener", ->
 
-    event = Event {async: no}
+    event = Event()
 
     foo = event 1, emptyFunction
     foo.start()
@@ -84,7 +84,7 @@ describe "event.emit(args...)", ->
 
   it "works with just one Listener", ->
 
-    event = Event {async: no}
+    event = Event()
 
     listener = event 2, emptyFunction
     listener.start()
@@ -96,14 +96,14 @@ describe "event.emit(args...)", ->
 
   it "works with no listeners", ->
 
-    event = Event {async: no}
+    event = Event()
 
     expect -> event.emit()
       .not.toThrow()
 
   it "detaches finished Listeners", ->
 
-    event = Event {async: no}
+    event = Event()
 
     foo = event 2, emptyFunction
     foo.start()
@@ -126,7 +126,7 @@ describe "event.emit(args...)", ->
 
   it "is bound to the Event", ->
 
-    event = Event {async: no}
+    event = Event()
 
     listener = event 2, emptyFunction
     listener.start()
@@ -139,7 +139,7 @@ describe "event.emit(args...)", ->
 
   it "while notifying, any detached Listeners are cleaned up", ->
 
-    event = Event {async: no}
+    event = Event()
 
     foo = event 1, ->
 
@@ -168,7 +168,7 @@ describe "event.emit(args...)", ->
 
   bench ->
 
-    event = Event {async: no}
+    event = Event()
 
     for i in [ 0 .. 5 ]
       event emptyFunction
