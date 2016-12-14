@@ -19,16 +19,18 @@ A simple event emitter.
 If a function is provided as the first argument, it will be called on every `emit`.
 
 **Options:**
-- `async`: When true, all emits are delayed using `setImmediate`. Defaults to true.
+- `async`: When true, all emits are delayed using `setImmediate`. Defaults to `false`.
 - `argTypes`: An object of types used to validate `emit` arguments.
 
 **Properties:**
-- `emit`: The bound method for notifying any listeners (forwarding the context/args)
 - `listenable`: Provides an interface for listening, but not emitting (lazily created)
 - `listenerCount`: The number of attached `Event.Listener` instances
 - `hasListeners`: Equals true if any listeners are attached
 
 **Methods:**
+- `emit()`: Notifies all active listeners, passing on any arguments. 
+- `bindEmit()`: Creates an emit function bound to the event.
+- `applyEmit(args)`: Emits an arguments array.
 - `reset()`: Removes all attached listeners and clears the emit queue. 
 
 #### `Event.Listener`
