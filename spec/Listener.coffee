@@ -5,7 +5,7 @@ describe "listener.notify()", ->
 
   it "calls the `_callback` property", ->
 
-    event = Event {async: no}
+    event = Event()
 
     listener = event spy = jasmine.createSpy()
     listener.start()
@@ -16,7 +16,7 @@ describe "listener.notify()", ->
 
   it "increments the `calls` property if `maxCalls` isnt Infinity", ->
 
-    event = Event {async: no}
+    event = Event()
 
     listener = event 3, emptyFunction
     listener.start()
@@ -31,7 +31,7 @@ describe "listener.notify()", ->
 
   it "detaches the Listener if `maxCalls` is reached", ->
 
-    event = Event {async: no}
+    event = Event()
 
     listener = event 1, emptyFunction
     listener.start()
@@ -45,7 +45,7 @@ describe "listener.detach()", ->
 
   it "unpairs the Listener from its Event", ->
 
-    event = Event {async: no}
+    event = Event()
 
     listener = event 5, emptyFunction
     listener.start()
@@ -67,7 +67,7 @@ describe "listener.detach()", ->
 
   it "can be safely called multiple times", ->
 
-    event = Event {async: no}
+    event = Event()
 
     listener = event emptyFunction
     listener.start()
@@ -81,7 +81,7 @@ describe "listener.stop()", ->
 
   it "disables the Listener without detaching it", ->
 
-    event = Event {async: no}
+    event = Event()
 
     listener = event 5, emptyFunction
     listener.start()
@@ -103,7 +103,7 @@ describe "listener.stop()", ->
 
   it "can be safely called multiple times", ->
 
-    event = Event {async: no}
+    event = Event()
     listener = event emptyFunction
     listener.start()
 

@@ -92,13 +92,13 @@ type.defineMethods
     @_notify = emptyFunction
     return
 
-  _notifyUnlimited: (context, args) ->
-    @_callback.apply context, args
+  _notifyUnlimited: (args) ->
+    @_callback.apply null, args
     return
 
-  _notifyLimited: (context, args) ->
+  _notifyLimited: (args) ->
     @calls += 1
-    @_callback.apply context, args
+    @_callback.apply null, args
     @detach() if @calls is @maxCalls
     return
 
