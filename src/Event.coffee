@@ -40,8 +40,8 @@ type.defineFrozenValues (_, options) ->
 # If a callback was passed, create a Listener
 # that listens until this Event is GC'd.
 type.initInstance (callback) ->
-  return if not callback
-  Event.Listener callback
+  callback and
+    Event.Listener callback
     .attach this
     .start()
 
@@ -87,35 +87,35 @@ type.defineMethods
 
   _createBoundEmit: ->
     frozen.define this, "_boundEmit",
-      value: boundEmit = bind.method this, "emit"
-    return boundEmit
+      value: bind.method this, "emit"
+    return @_boundEmit
 
   _createListenable: ->
     frozen.define this, "_listenable",
-      value: listenable = (maxCalls, callback) =>
+      value: (maxCalls, callback) =>
         Event.Listener(maxCalls, callback).attach this
-    return listenable
+    return @_listenable
 
   _createListeners: ->
     frozen.define this, "_listeners",
-      value: listeners = ListenerArray {async: @_async}
-    return listeners
+      value: ListenerArray {async: @_async}
+    return @_listeners
 
 type.defineStatics
 
   didAttach: get: ->
 
     frozen.define this, "didAttach",
-      value: didAttach = Event()
+      value: Event()
 
     # Prevent 'didAttach' from triggering itself.
-    frozen.define didAttach, "_onAttach",
+    frozen.define @didAttach, "_onAttach",
       value: (listener) ->
         listeners = @_listeners or @_createListeners()
         listeners.attach listener
         return
 
-    return didAttach
+    return @didAttach
 
 module.exports = Event = type.build()
 
