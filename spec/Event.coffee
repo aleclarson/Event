@@ -124,19 +124,6 @@ describe "event.emit(args...)", ->
     expect event._listeners._value
       .toBe null
 
-  it "is bound to the Event", ->
-
-    event = Event()
-
-    listener = event 2, emptyFunction
-    listener.start()
-
-    emit = event.emit
-    emit()
-
-    expect listener.calls
-      .toBe 1
-
   it "while notifying, any detached Listeners are cleaned up", ->
 
     event = Event()
