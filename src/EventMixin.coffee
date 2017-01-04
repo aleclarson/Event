@@ -1,40 +1,53 @@
 
 {frozen} = require "Property"
 
-assertType = require "assertType"
-isDev = require "isDev"
-Null = require "Null"
-sync = require "sync"
+spliceArray = require "spliceArray"
+Type = require "Type"
 
 Event = require "./Event"
 
-module.exports = (type, config) ->
+module.exports = (type, eventTypes) ->
 
-  # Try to create events immediately upon creation.
-  type._phases.init.unshift ->
-    events = @__events or Object.create null
+  unless type._hasEvents
+    frozen.define type, "_hasEvents", {value: yes}
+    kind = type._kind
+    unless kind and kind::__hasEvents
+      mixin.apply type
 
-    sync.each config, (argTypes, key) =>
-      assertType argTypes, Object.or Null
-
-      event = Event()
-      events[key] = ->
-
-        if isDev and argTypes
-          validateArgs arguments, argTypes
-
-        event.applyEmit arguments
-        return
-
-      frozen.define this, key, {value: event.listenable}
-      return
-
-    if not @__events
-      frozen.define this, "__events", {value: events}
+  type.initInstance ->
+    events = @__events
+    for eventName, argTypes of eventTypes
+      continue if events[eventName]
+      options = {argTypes} if argTypes
+      events[eventName] = Event options
     return
 
-validateArgs = (args, argTypes) ->
-  argNames = Object.keys argTypes
-  for name, index in argNames
-    assertType args[index], argTypes[name], name
-  return
+mixin = Type.Mixin()
+
+mixin.defineValues ->
+
+  __events: Object.create null
+
+mixin.definePrototype
+
+  __hasEvents: yes
+
+mixin.defineMethods
+
+  emit: (eventName) ->
+    event = @__events[eventName]
+    if event is undefined
+      throw Error "Event does not exist: '#{eventName}'"
+    event.applyEmit spliceArray arguments, 1
+
+  on: (eventName, callback) ->
+    event = @__events[eventName]
+    if event is undefined
+      throw Error "Event does not exist: '#{eventName}'"
+    return event callback
+
+  once: (eventName, callback) ->
+    event = @__events[eventName]
+    if event is undefined
+      throw Error "Event does not exist: '#{eventName}'"
+    return event 1, callback

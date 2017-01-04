@@ -28,8 +28,8 @@ EventType = NamedFunction "EventType", (name, config) ->
       args[0].argTypes = argTypes
       return
 
-  if config.async? or config.sync?
-    isAsync = config.async ? not config.sync
+  if config.async?
+    isAsync = config.async
     type.initArgs (args) ->
       args[0].async = isAsync
       return
