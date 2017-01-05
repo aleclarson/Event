@@ -18,7 +18,7 @@ module.exports = (type, eventTypes) ->
     events = @__events
     for eventName, argTypes of eventTypes
       continue if events[eventName]
-      options = {argTypes} if argTypes
+      options = if argTypes then {argTypes} else {}
       events[eventName] = Event options
     return
 
