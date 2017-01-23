@@ -106,16 +106,16 @@ type.defineStatics
   didAttach: get: ->
 
     frozen.define this, "didAttach",
-      value: Event()
+      value: didAttach = Event()
 
     # Prevent 'didAttach' from triggering itself.
-    frozen.define @didAttach, "_onAttach",
+    frozen.define didAttach, "_onAttach",
       value: (listener) ->
         listeners = @_listeners or @_createListeners()
         listeners.attach listener
         return
 
-    return @didAttach
+    return didAttach
 
 module.exports = Event = type.build()
 
