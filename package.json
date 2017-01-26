@@ -12,10 +12,10 @@
   },
   "dependencies": {
     "NamedFunction": "aleclarson/NamedFunction#2.0.1",
-    "Property": "aleclarson/Property#1.2.1",
-    "Type": "aleclarson/Type#2.3.0",
+    "Property": "aleclarson/Property#1.2.3",
+    "Type": "aleclarson/Type#2.3.1",
     "assertType": "aleclarson/assertType#2.0.1",
-    "bind": "aleclarson/bind#1.0.1",
+    "bind": "aleclarson/bind#1.0.2",
     "emptyFunction": "aleclarson/emptyFunction#1.0.0",
     "getProto": "aleclarson/getProto#1.0.0",
     "immediate": "aleclarson/immediate#4.1.1",
