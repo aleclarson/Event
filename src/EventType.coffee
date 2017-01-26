@@ -17,22 +17,22 @@ EventType = NamedFunction "EventType", (name, config) ->
   type = Type name
   type.inherits Event
 
-  type.initArgs (args) ->
+  type.createArgs (args) ->
     unless options = args[0]
       args[0] = options = {}
-    return
+    return args
 
   if argTypes = config.argTypes
     assertType argTypes, Object
-    type.initArgs (args) ->
+    type.createArgs (args) ->
       args[0].argTypes = argTypes
-      return
+      return args
 
   if config.async?
     isAsync = config.async
-    type.initArgs (args) ->
+    type.createArgs (args) ->
       args[0].async = isAsync
-      return
+      return args
 
   return type.build()
 

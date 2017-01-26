@@ -8,8 +8,8 @@ Listener = require "./Listener"
 
 type = Type "ListenerArray"
 
-type.defineOptions
-  async: Boolean.withDefault no
+type.defineArgs
+  async: Boolean
 
 type.defineValues (options) ->
 
