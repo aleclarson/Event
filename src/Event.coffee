@@ -104,6 +104,15 @@ type.defineMethods
 
 type.defineStatics
 
+  getListeners: (callback) ->
+    listeners = []
+    onAttach = @didAttach (listener) ->
+      listeners.push listener.start()
+    onAttach.start()
+    callback()
+    onAttach.detach()
+    return listeners
+
   didAttach: get: ->
 
     frozen.define this, "didAttach",
