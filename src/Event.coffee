@@ -13,25 +13,26 @@ type = Type "Event"
 
 type.trace()
 
-type.initArgs (args) ->
-  if isType args[0], Object
-    args[1] = args[0]
-    args[0] = undefined
-  else unless args[1]
-    args[1] = {}
-  return
+type.defineArgs ->
 
-type.defineArgs
-  callback: Function
-  options:
-    async: Boolean
-    argTypes: Object
+  create: (args) ->
+    if isType args[0], Object
+      args[1] = args[0]
+      args[0] = undefined
+    return args
+
+  required: no
+  types: [
+    Function
+    async: Boolean.Maybe
+    argTypes: Object.Maybe
+  ]
 
 type.defineFunction (maxCalls, callback) ->
   Event.Listener maxCalls, callback
     .attach this
 
-type.defineFrozenValues (_, options) ->
+type.defineFrozenValues (_, options = {}) ->
 
   _async: options.async
 
