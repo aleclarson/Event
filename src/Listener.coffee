@@ -8,19 +8,15 @@ type = Type "Listener"
 
 type.trace()
 
+type.createArgs (args) ->
+  if typeof args[0] is "function"
+    args[1] = args[0]
+    args[0] = undefined
+  return args
+
 type.defineArgs ->
-
-  create: (args) ->
-    if typeof args[0] is "function"
-      args[1] = args[0]
-      args[0] = undefined
-    return args
-
+  types: [Number, Function]
   defaults: [Infinity]
-  types: [
-    Number   # maxCalls
-    Function # callback
-  ]
 
 type.defineValues (maxCalls, callback) ->
 
